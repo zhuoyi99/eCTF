@@ -61,3 +61,10 @@ def send_packets(sock: socket.socket, data: bytes):
 
         if resp != RESP_OK:
             exit(f"ERROR: Bootloader responded with {repr(resp)}")
+
+import ed25519
+
+def sign(msg: bytes) -> bytes:
+    with open("/secrets/ed_private_key.bin", "rb") as f:
+        SIGNING_KEY = ed25519.SigningKey(f.read())
+    return SIGNING_KEY.sign(msg)

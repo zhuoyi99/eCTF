@@ -16,7 +16,7 @@ import json
 import logging
 from pathlib import Path
 
-from util import print_banner, FIRMWARE_ROOT, LOG_FORMAT
+from util import print_banner, FIRMWARE_ROOT, LOG_FORMAT, sign
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(Path(__file__).name)
@@ -31,6 +31,10 @@ def protect_firmware(
     log.info("Reading the firmware...")
     firmware_data = firmware_file.read_bytes()
 
+    log.info("Signing...")
+    signature = sign(firmware_data)
+    log.info(f"Signature: {signature.hex()}")
+
     log.info("Packaging the firmware...")
 
     # Construct the metadata
@@ -42,6 +46,7 @@ def protect_firmware(
         "version_num": version,
         "release_msg": release_message,
         "firmware": firmware_data.hex(),
+        "signature": signature.hex(),
     }
 
     # Write to the output file

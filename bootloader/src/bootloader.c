@@ -15,6 +15,8 @@
 #include <stdbool.h>
 
 #include "driverlib/interrupt.h"
+// TODO replace with wrappers
+#include "driverlib/eeprom.h"
 
 #include "flash.h"
 #include "uart.h"
@@ -24,10 +26,23 @@
 #include "aes.h"
 #endif
 
+// ED25519 Signatures
+#include "ed25519.h"
+#define ED_SIGNATURE_SIZE 64
+// SRAM variable (TODO: Move this?)
+unsigned char ED_PUBLIC_KEY[32];
+// Location of the public key on EEPROM
+#define ED_PUBLIC_KEY_LOCATION 0
+// Helper to verify signatures
+#define signature_verify(signature, storage, size) ed25519_verify(signature, storage, size, ED_PUBLIC_KEY)
 
 // Storage layout
 
 /*
+ * Signatures:
+ *      Fw:      0x0002B300 : 0x0002B040 (64B, ED_SIGNATURE_SIZE)
+ *
+ *
  * Firmware:
  *      Size:    0x0002B400 : 0x0002B404 (4B)
  *      Version: 0x0002B404 : 0x0002B408 (4B)
@@ -37,6 +52,8 @@
  *      Size:    0x0002FC00 : 0x0003000 (1KB = 4B + pad)
  *      Cfg:     0x00030000 : 0x0004000 (64KB)
  */
+#define FIRMWARE_SIGNATURE_PTR     ((uint32_t)(FLASH_START + 0x0002B300))
+
 #define FIRMWARE_METADATA_PTR      ((uint32_t)(FLASH_START + 0x0002B400))
 #define FIRMWARE_SIZE_PTR          ((uint32_t)(FIRMWARE_METADATA_PTR + 0))
 #define FIRMWARE_VERSION_PTR       ((uint32_t)(FIRMWARE_METADATA_PTR + 4))
@@ -77,6 +94,12 @@ void handle_boot(void)
     // Copy the firmware into the Boot RAM section
     for (i = 0; i < size; i++) {
         *((uint8_t *)(FIRMWARE_BOOT_PTR + i)) = *((uint8_t *)(FIRMWARE_STORAGE_PTR + i));
+    }
+
+    // Verify firmware signature
+    if(!signature_verify((uint8_t*)FIRMWARE_SIGNATURE_PTR, (uint8_t*)FIRMWARE_STORAGE_PTR, size)) {
+        uart_writeb(HOST_UART, 'S');
+        return;
     }
 
     uart_writeb(HOST_UART, 'M');
@@ -193,8 +216,14 @@ void handle_update(void)
     size |= ((uint32_t)uart_readb(HOST_UART)) << 16;
     size |= ((uint32_t)uart_readb(HOST_UART)) << 8;
     size |= (uint32_t)uart_readb(HOST_UART);
+    // TODO: Do we need to validate this is sensible?
+    
+    // Receive digital signature of firmware
+    uint8_t fw_signature[ED_SIGNATURE_SIZE];
+    uart_read(HOST_UART, fw_signature, 64);
 
     // Receive release message
+    // TODO change this to be safe
     rel_msg_size = uart_readline(HOST_UART, rel_msg) + 1; // Include terminator
 
     // Check the version
@@ -221,6 +250,9 @@ void handle_update(void)
 
     // Save size
     flash_write_word(size, FIRMWARE_SIZE_PTR);
+
+    // Save firmware signature
+    flash_write((uint32_t*)fw_signature, FIRMWARE_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
 
     // Write release message
     uint8_t *rel_msg_read_ptr = rel_msg;
@@ -314,6 +346,12 @@ int main(void) {
 
     // Initialize IO components
     uart_init();
+
+    // TODO initialize EEPROM properly - someone else already did this, just needs to be merged
+
+    // Read signature public key from EEPROM
+    EEPROMRead((uint32_t*)&ED_PUBLIC_KEY, ED_PUBLIC_KEY_LOCATION, 32);
+    EEPROMBlockHide(EEPROMBlockFromAddr(ED_PUBLIC_KEY_LOCATION));
 
     // Handle host commands
     while (1) {
