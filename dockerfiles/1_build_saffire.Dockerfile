@@ -42,5 +42,6 @@ WORKDIR /bl_build
 
 ARG OLDEST_VERSION
 RUN make OLDEST_VERSION=${OLDEST_VERSION}
+RUN python3 /bl_build/modify_bootloader_bin.py
 RUN mv /bl_build/gcc/bootloader.bin /bootloader/bootloader.bin
 RUN mv /bl_build/gcc/bootloader.axf /bootloader/bootloader.elf

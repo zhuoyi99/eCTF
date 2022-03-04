@@ -68,3 +68,43 @@ def sign(msg: bytes) -> bytes:
     with open("/secrets/ed_private_key.bin", "rb") as f:
         SIGNING_KEY = ed25519.SigningKey(f.read())
     return SIGNING_KEY.sign(msg)
+
+from secrets import token_bytes
+from hashlib import sha512
+import struct
+
+def integrity_challenge(sock: socket.socket, checkWholeRegion=True) -> None:
+    """
+    Checks the integrity of the bootloader and exits on failure.
+    """
+
+    start = 0x5800
+    end = 0x40000
+    if not checkWholeRegion:
+        end = 0x2B000
+
+    sock.sendall(b"I");
+    assert sock.recv(1) == b"R"; # Ready
+    challenge = token_bytes(12)
+    sock.sendall(struct.pack("<II", start, end - start))
+    sock.sendall(challenge)
+
+    with open("/bootloader/bootloader.bin", "rb") as f:
+        fw_data = f.read()[:end - start]
+
+    computed_hash = sha512(challenge + fw_data).digest()
+    log.info(f"Challenge: {challenge.hex()}")
+    log.info(f"Computed: {computed_hash.hex()}")
+
+    recv = b""
+    while len(recv) != 512//8:
+        recv_chunk = sock.recv(512//8 - len(recv))
+        if recv_chunk == b"": break # Forcefully in case of closed
+        recv += recv_chunk
+    log.info(f"Recieved: {recv.hex()}")
+
+    if recv != computed_hash:
+        log.error("ERROR: Could not verify integrity of bootloader!")
+        exit(-1)
+
+    log.info("OK!")

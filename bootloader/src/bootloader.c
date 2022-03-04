@@ -36,11 +36,14 @@ unsigned char ED_PUBLIC_KEY[32];
 // Helper to verify signatures
 #define signature_verify(signature, storage, size) ed25519_verify(signature, storage, size, ED_PUBLIC_KEY)
 
+// SHA512 from the ED25519 library
+#include "sha512.h"
+
 // Storage layout
 
 /*
  * Signatures:
- *      Fw:      0x0002B300 : 0x0002B040 (64B, ED_SIGNATURE_SIZE)
+ *      Fw:      0x0002B300 : 0x0002B340 (64B, ED_SIGNATURE_SIZE)
  *
  *
  * Firmware:
@@ -49,8 +52,8 @@ unsigned char ED_PUBLIC_KEY[32];
  *      Msg:     0x0002B408 : 0x0002BC00 (~2KB = 1KB + 1B + pad)
  *      Fw:      0x0002BC00 : 0x0002FC00 (16KB)
  * Configuration:
- *      Size:    0x0002FC00 : 0x0003000 (1KB = 4B + pad)
- *      Cfg:     0x00030000 : 0x0004000 (64KB)
+ *      Size:    0x0002FC00 : 0x00030000 (1KB = 4B + pad)
+ *      Cfg:     0x00030000 : 0x00040000 (64KB)
  */
 #define FIRMWARE_SIGNATURE_PTR     ((uint32_t)(FLASH_START + 0x0002B300))
 
@@ -238,6 +241,9 @@ void handle_update(void)
         return;
     }
 
+    // Clear signature page (TODO: What about other signatures if they go in the same page?)
+    flash_erase_page(FIRMWARE_SIGNATURE_PTR);
+
     // Clear firmware metadata
     flash_erase_page(FIRMWARE_METADATA_PTR);
 
@@ -311,6 +317,32 @@ void handle_configure(void)
     load_data(HOST_UART, CONFIGURATION_STORAGE_PTR, size);
 }
 
+/**
+ * @brief Handle an integrity challenge of itself.
+ */
+void handle_integrity_challenge(void) {
+    sha512_context hash;
+    unsigned char challenge[12];
+    unsigned char out[64];
+
+    uart_writeb(HOST_UART, 'R');
+
+    unsigned char* start;
+    uint32_t size;
+    uart_read(HOST_UART, (unsigned char*)&start, sizeof(start));
+    uart_read(HOST_UART, &size, sizeof(size));
+    // Sanity check, sorry for all the casts...
+    if(start > (unsigned char*)0x40000 ||
+            size > 0x40000 || (start + size) > (unsigned char*)0x40000) return;
+    uart_read(HOST_UART, challenge, 12);
+    sha512_init(&hash); // If it fails at any step, final hash is bad so whatever
+    sha512_update(&hash, challenge, 12);
+    sha512_update(&hash, start, size);
+    sha512_final(&hash, out);
+    uart_write(HOST_UART, out, 64);
+}
+
+
 
 /**
  * @brief Host interface polling loop to receive configure, update, readback,
@@ -358,6 +390,9 @@ int main(void) {
         cmd = uart_readb(HOST_UART);
 
         switch (cmd) {
+        case 'I':
+            handle_integrity_challenge();
+            break;
         case 'C':
             handle_configure();
             break;
