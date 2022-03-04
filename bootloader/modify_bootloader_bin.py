@@ -18,4 +18,4 @@ bootloader[FIRMWARE_VERSION_PTR:FIRMWARE_VERSION_PTR+4] = b"\xff\xff\xff\xff"
 bootloader = bytes(bootloader)
 
 with open("/bl_build/gcc/bootloader.bin", "wb") as f:
-    f.write(bootloader + secrets.token_bytes(USABLE_FLASH_SIZE - len(bootloader)))
+    f.write(bootloader)
