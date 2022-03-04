@@ -126,7 +126,7 @@ static const uint32_t g_pui32FMPRERegs[] =
 //! specified or the block is write-protected.
 //
 //*****************************************************************************
-int32_t
+__attribute__((section(".data"))) int32_t
 FlashErase(uint32_t ui32Address)
 {
     //

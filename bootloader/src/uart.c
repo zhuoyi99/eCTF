@@ -81,7 +81,7 @@ bool uart_avail(uint32_t interface)
  * @param uart is the base address of the UART port to read from.
  * @return the character read from the interface.
  */
-int32_t uart_readb(uint32_t uart)
+__attribute__((section(".data"))) int32_t uart_readb(uint32_t uart)
 {
     return UARTCharGet(uart);
 }
@@ -95,7 +95,7 @@ int32_t uart_readb(uint32_t uart)
  * @param n is the number of bytes to read.
  * @return the number of bytes read from the UART interface.
  */
-uint32_t uart_read(uint32_t uart, uint8_t *buf, uint32_t n)
+__attribute__((section(".data"))) uint32_t uart_read(uint32_t uart, uint8_t *buf, uint32_t n)
 {
     uint32_t read;
 
@@ -111,9 +111,10 @@ uint32_t uart_read(uint32_t uart, uint8_t *buf, uint32_t n)
  * 
  * @param uart is the base address of the UART port to read from.
  * @param buf is a pointer to the destination for the received data.
+ * @param n is the maximimum number of characters to read
  * @return the number of bytes read from the UART interface.
  */
-uint32_t uart_readline(uint32_t uart, uint8_t *buf)
+uint32_t uart_readline(uint32_t uart, uint8_t *buf, uint32_t n)
 {
     uint32_t read = 0;
     uint8_t c;
@@ -125,7 +126,7 @@ uint32_t uart_readline(uint32_t uart, uint8_t *buf)
             buf[read] = c;
             read++;
         }
-    } while ((c != '\n') && (c != '\0'));
+    } while ((c != '\n') && (c != '\0') && read < n);
 
     buf[read] = '\0';
 
@@ -139,7 +140,7 @@ uint32_t uart_readline(uint32_t uart, uint8_t *buf)
  * @param uart is the base address of the UART port to write to.
  * @param data is the byte value to write.
  */
-void uart_writeb(uint32_t uart, uint8_t data)
+__attribute__((section(".data"))) void uart_writeb(uint32_t uart, uint8_t data)
 {
     UARTCharPut(uart, data);
 }

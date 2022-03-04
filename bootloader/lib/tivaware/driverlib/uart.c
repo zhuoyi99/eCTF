@@ -1227,7 +1227,7 @@ UARTCharGetNonBlocking(uint32_t ui32Base)
 //! \e int32_t.
 //
 //*****************************************************************************
-int32_t
+__attribute__((section(".data"))) int32_t
 UARTCharGet(uint32_t ui32Base)
 {
     //
@@ -1311,7 +1311,7 @@ UARTCharPutNonBlocking(uint32_t ui32Base, unsigned char ucData)
 //! \return None.
 //
 //*****************************************************************************
-void
+__attribute__((section(".data"))) void
 UARTCharPut(uint32_t ui32Base, unsigned char ucData)
 {
     //

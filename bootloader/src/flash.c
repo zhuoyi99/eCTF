@@ -18,7 +18,12 @@
 #include "inc/hw_flash.h"
 #include "inc/hw_types.h"
 
+#include "constants.h"
+#include "flash_trampoline.h"
 #include "flash.h"
+#include "uart.h"
+
+// These functions are not safe to use.
 
 /**
  * @brief Erases a block of flash.
@@ -27,7 +32,7 @@
  * @return 0 on success, or -1 if an invalid block address was specified or the 
  * block is write-protected.
  */
-int32_t flash_erase_page(uint32_t addr)
+__attribute__((section(".data"))) int32_t flash_erase_page_unsafe(uint32_t addr)
 {
     // Erase page containing this address
     return FlashErase(addr & ~(FLASH_PAGE_SIZE - 1));
@@ -43,7 +48,7 @@ int32_t flash_erase_page(uint32_t addr)
  * @param addr is the location to write to.
  * @return 0 on success, or -1 if an error occurs.
  */
-int32_t flash_write_word(uint32_t data, uint32_t addr)
+__attribute__((section(".data"))) int32_t flash_write_word_unsafe(uint32_t data, uint32_t addr)
 {
     // check address is a multiple of 4
     if ((addr & 0x3) != 0) {
@@ -67,9 +72,10 @@ int32_t flash_write_word(uint32_t data, uint32_t addr)
 
     // Return an error if an access violation occurred.
     if(HWREG(FLASH_FCRIS) & (FLASH_FCRIS_ARIS | FLASH_FCRIS_VOLTRIS | FLASH_FCRIS_INVDRIS | FLASH_FCRIS_PROGRIS)) {
+        // Just in case :)
         return -1;
     }
-
+    
     // Success
     return 0;
 }
@@ -86,7 +92,7 @@ int32_t flash_write_word(uint32_t data, uint32_t addr)
  * @param count is the number of words to be written.
  * @return 0 on success, or -1 if an error occurs.
  */
-int32_t flash_write(uint32_t *data, uint32_t addr, uint32_t count)
+__attribute__((section(".data"))) int32_t flash_write_unsafe(uint32_t *data, uint32_t addr, uint32_t count)
 {
     int i;
     int status;
@@ -98,7 +104,7 @@ int32_t flash_write(uint32_t *data, uint32_t addr, uint32_t count)
 
     // Loop over the words to be programmed.
     for (i = 0; i < count; i++) {
-        status = flash_write_word(data[i], addr);
+        status = flash_write_word_unsafe(data[i], addr);
 
         if (status == -1) {
             return -1;
@@ -109,4 +115,169 @@ int32_t flash_write(uint32_t *data, uint32_t addr, uint32_t count)
 
     // Success
     return(0);
+}
+
+// Functions that are safe to use
+
+__attribute__((section(".data"))) int32_t flash_erase_page(uint32_t addr) {
+    uint8_t hash[TC_SHA256_DIGEST_SIZE];
+    uint8_t hash2[TC_SHA256_DIGEST_SIZE];
+
+    // Get base address
+    addr = addr & ~(FLASH_PAGE_SIZE - 1);
+
+    // Flash check!
+    current_hash(hash, (uint8_t*)addr, FLASH_PAGE_SIZE);
+    
+    int32_t status = flash_erase_page_unsafe(addr);
+
+    // Check hash hasn't changed
+    current_hash(hash2, (uint8_t*)addr, FLASH_PAGE_SIZE);
+    for(int i = 0; i < TC_SHA256_DIGEST_SIZE; i++) {
+        if(hash[i] != hash2[i]) panic();
+    }
+    return status;
+}
+
+__attribute__((section(".data"))) int32_t flash_write_word(uint32_t data, uint32_t addr) {
+    uint8_t hash[TC_SHA256_DIGEST_SIZE];
+    uint8_t hash2[TC_SHA256_DIGEST_SIZE];
+    // Flash check!
+    current_hash(hash, (uint8_t*)addr, 4);
+    
+    int32_t status = flash_write_word_unsafe(data, addr);
+
+    // Check hash hasn't changed
+    current_hash(hash2, (uint8_t*)addr, 4);
+    for(int i = 0; i < TC_SHA256_DIGEST_SIZE; i++) {
+        if(hash[i] != hash2[i]) panic();
+    }
+    return status;
+}
+
+__attribute__((section(".data"))) int32_t flash_write(uint32_t *data, uint32_t addr, uint32_t count) {
+    uint8_t hash[TC_SHA256_DIGEST_SIZE];
+    uint8_t hash2[TC_SHA256_DIGEST_SIZE];
+    // Flash check
+    current_hash(hash, (uint8_t*)addr, count * 4);
+    
+    int32_t status = flash_write_unsafe(data, addr, count);
+
+    // Check hash hasn't changed
+    current_hash(hash2, (uint8_t*)addr, count * 4);
+    for(int i = 0; i < TC_SHA256_DIGEST_SIZE; i++) {
+        if(hash[i] != hash2[i]) panic();
+    }
+    return status;
+}
+
+__attribute__((section(".data"))) void load_data_unsafe(uint32_t interface, uint32_t dst, uint32_t size)
+{
+    int i;
+    uint32_t frame_size;
+    uint8_t page_buffer[FLASH_PAGE_SIZE];
+
+    while(size > 0) {
+        // calculate frame size
+        frame_size = size > FLASH_PAGE_SIZE ? FLASH_PAGE_SIZE : size;
+        // read frame into buffer
+        uart_read(HOST_UART, page_buffer, frame_size);
+        // pad buffer if frame is smaller than the page
+        for(i = frame_size; i < FLASH_PAGE_SIZE; i++) {
+            page_buffer[i] = 0xFF;
+        }
+        // clear flash page
+        flash_erase_page_unsafe(dst);
+        // write flash page
+        flash_write_unsafe((uint32_t *)page_buffer, dst, FLASH_PAGE_SIZE >> 2);
+        // next page and decrease size
+        dst += FLASH_PAGE_SIZE;
+        size -= frame_size;
+        // send frame ok
+        uart_writeb(HOST_UART, FRAME_OK);
+    }
+}
+
+/**
+ * @brief Trusted part of firmware load.
+ */
+__attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uint8_t* fw_signature, uint32_t size, uint32_t rel_msg_size) {
+    uint8_t hash[TC_SHA256_DIGEST_SIZE];
+    uint8_t hash2[TC_SHA256_DIGEST_SIZE];
+
+    // Including two pages for metadata and one for signatures
+    uint32_t padded_size = size + (FLASH_PAGE_SIZE - size % FLASH_PAGE_SIZE) + FLASH_PAGE_SIZE * 3;
+
+    // Flash check!
+    current_hash(hash, (uint8_t*)FIRMWARE_BASE_PTR, padded_size);
+
+    // Clear signature page
+    // TODO: What about other signatures if they go in the same page?
+    flash_erase_page_unsafe(FIRMWARE_SIGNATURE_PTR);
+
+    // Clear firmware metadata
+    flash_erase_page_unsafe(FIRMWARE_METADATA_PTR);
+
+    // Save firmware signature
+    flash_write_unsafe((uint32_t*)fw_signature, (uint8_t*)FIRMWARE_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
+
+    // Write release message
+    uint8_t *rel_msg_read_ptr = rel_msg;
+    uint32_t rel_msg_write_ptr = FIRMWARE_METADATA_PTR;
+    uint32_t rem_bytes = rel_msg_size + 4 + 4;
+
+    // If release message goes outside of the first page, write the first full page
+    if (rel_msg_size > FLASH_PAGE_SIZE) {
+
+        // Write first page
+        flash_write_unsafe((uint32_t *)rel_msg, (uint32_t*)FIRMWARE_METADATA_PTR, FLASH_PAGE_SIZE >> 2); // This is always a multiple of 4
+
+        // Set up second page
+        rem_bytes = rel_msg_size - FLASH_PAGE_SIZE;
+        rel_msg_read_ptr = rel_msg + FLASH_PAGE_SIZE;
+        rel_msg_write_ptr = FIRMWARE_RELEASE_MSG_PTR2;
+        flash_erase_page_unsafe(rel_msg_write_ptr);
+    }
+
+    // Program last or only page of release message
+    if (rem_bytes % 4 != 0) {
+        rem_bytes += 4 - (rem_bytes % 4); // Account for partial word
+    }
+    flash_write_unsafe((uint32_t *)rel_msg_read_ptr, rel_msg_write_ptr, rem_bytes >> 2);
+
+    // Acknowledge
+    uart_writeb(HOST_UART, FRAME_OK);
+    
+    // Retrieve firmware
+    load_data_unsafe(HOST_UART, FIRMWARE_STORAGE_PTR, size);
+
+    current_hash(hash2, (uint8_t*)FIRMWARE_BASE_PTR, padded_size);
+    for(int i = 0; i < TC_SHA256_DIGEST_SIZE; i++) {
+        if(hash[i] != hash2[i]) panic();
+    }
+}
+
+/**
+ * @brief Trusted part of configuration load.
+ */
+__attribute__((section(".data"))) void handle_configure_write(uint32_t size) {
+    uint8_t hash[TC_SHA256_DIGEST_SIZE];
+    uint8_t hash2[TC_SHA256_DIGEST_SIZE];
+
+    // Including one page for metadata
+    uint32_t padded_size = size + (FLASH_PAGE_SIZE - size % FLASH_PAGE_SIZE) + FLASH_PAGE_SIZE;
+
+    // Flash check!
+    current_hash(hash, (uint8_t*)CONFIGURATION_METADATA_PTR, padded_size);
+    
+    flash_erase_page_unsafe(CONFIGURATION_METADATA_PTR);
+    flash_write_word_unsafe(size, CONFIGURATION_SIZE_PTR);
+
+    // Retrieve configuration
+    load_data_unsafe(HOST_UART, CONFIGURATION_STORAGE_PTR, size);
+
+    current_hash(hash2, (uint8_t*)CONFIGURATION_METADATA_PTR, padded_size);
+    for(int i = 0; i < TC_SHA256_DIGEST_SIZE; i++) {
+        if(hash[i] != hash2[i]) panic();
+    }
 }

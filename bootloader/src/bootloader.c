@@ -18,6 +18,7 @@
 // TODO replace with wrappers
 #include "driverlib/eeprom.h"
 
+#include "constants.h"
 #include "flash.h"
 #include "uart.h"
 
@@ -28,11 +29,8 @@
 
 // ED25519 Signatures
 #include "ed25519.h"
-#define ED_SIGNATURE_SIZE 64
 // SRAM variable (TODO: Move this?)
 unsigned char ED_PUBLIC_KEY[32];
-// Location of the public key on EEPROM
-#define ED_PUBLIC_KEY_LOCATION 0
 // Helper to verify signatures
 #define signature_verify(signature, storage, size) ed25519_verify(signature, storage, size, ED_PUBLIC_KEY)
 
@@ -40,44 +38,6 @@ unsigned char ED_PUBLIC_KEY[32];
 #include "sha512.h"
 
 // Storage layout
-
-/*
- * Signatures:
- *      Fw:      0x0002B300 : 0x0002B340 (64B, ED_SIGNATURE_SIZE)
- *
- *
- * Firmware:
- *      Size:    0x0002B400 : 0x0002B404 (4B)
- *      Version: 0x0002B404 : 0x0002B408 (4B)
- *      Msg:     0x0002B408 : 0x0002BC00 (~2KB = 1KB + 1B + pad)
- *      Fw:      0x0002BC00 : 0x0002FC00 (16KB)
- * Configuration:
- *      Size:    0x0002FC00 : 0x00030000 (1KB = 4B + pad)
- *      Cfg:     0x00030000 : 0x00040000 (64KB)
- */
-#define FIRMWARE_SIGNATURE_PTR     ((uint32_t)(FLASH_START + 0x0002B300))
-
-#define FIRMWARE_METADATA_PTR      ((uint32_t)(FLASH_START + 0x0002B400))
-#define FIRMWARE_SIZE_PTR          ((uint32_t)(FIRMWARE_METADATA_PTR + 0))
-#define FIRMWARE_VERSION_PTR       ((uint32_t)(FIRMWARE_METADATA_PTR + 4))
-#define FIRMWARE_RELEASE_MSG_PTR   ((uint32_t)(FIRMWARE_METADATA_PTR + 8))
-#define FIRMWARE_RELEASE_MSG_PTR2  ((uint32_t)(FIRMWARE_METADATA_PTR + FLASH_PAGE_SIZE))
-
-#define FIRMWARE_STORAGE_PTR       ((uint32_t)(FIRMWARE_METADATA_PTR + (FLASH_PAGE_SIZE*2)))
-#define FIRMWARE_BOOT_PTR          ((uint32_t)0x20004000)
-
-#define CONFIGURATION_METADATA_PTR ((uint32_t)(FIRMWARE_STORAGE_PTR + (FLASH_PAGE_SIZE*16)))
-#define CONFIGURATION_SIZE_PTR     ((uint32_t)(CONFIGURATION_METADATA_PTR + 0))
-
-#define CONFIGURATION_STORAGE_PTR  ((uint32_t)(CONFIGURATION_METADATA_PTR + FLASH_PAGE_SIZE))
-
-
-
-
-// Firmware update constants
-#define FRAME_OK 0x00
-#define FRAME_BAD 0x01
-
 
 /**
  * @brief Boot the firmware.
@@ -160,40 +120,7 @@ void handle_readback(void)
     uart_write(HOST_UART, address, size);
 }
 
-
-/**
- * @brief Read data from a UART interface and program to flash memory.
- * 
- * @param interface is the base address of the UART interface to read from.
- * @param dst is the starting page address to store the data.
- * @param size is the number of bytes to load.
- */
-void load_data(uint32_t interface, uint32_t dst, uint32_t size)
-{
-    int i;
-    uint32_t frame_size;
-    uint8_t page_buffer[FLASH_PAGE_SIZE];
-
-    while(size > 0) {
-        // calculate frame size
-        frame_size = size > FLASH_PAGE_SIZE ? FLASH_PAGE_SIZE : size;
-        // read frame into buffer
-        uart_read(HOST_UART, page_buffer, frame_size);
-        // pad buffer if frame is smaller than the page
-        for(i = frame_size; i < FLASH_PAGE_SIZE; i++) {
-            page_buffer[i] = 0xFF;
-        }
-        // clear flash page
-        flash_erase_page(dst);
-        // write flash page
-        flash_write((uint32_t *)page_buffer, dst, FLASH_PAGE_SIZE >> 2);
-        // next page and decrease size
-        dst += FLASH_PAGE_SIZE;
-        size -= frame_size;
-        // send frame ok
-        uart_writeb(HOST_UART, FRAME_OK);
-    }
-}
+// load_data was moved to flash.c since it sits in SRAM now
 
 /**
  * @brief Update the firmware.
@@ -205,7 +132,7 @@ void handle_update(void)
     uint32_t version = 0;
     uint32_t size = 0;
     uint32_t rel_msg_size = 0;
-    uint8_t rel_msg[1025]; // 1024 + terminator
+    uint8_t rel_msg[1024 + 1 + 4 + 4]; // 1024 + terminator + version + size
 
     // Acknowledge the host
     uart_writeb(HOST_UART, 'U');
@@ -226,8 +153,7 @@ void handle_update(void)
     uart_read(HOST_UART, fw_signature, 64);
 
     // Receive release message
-    // TODO change this to be safe
-    rel_msg_size = uart_readline(HOST_UART, rel_msg) + 1; // Include terminator
+    rel_msg_size = uart_readline(HOST_UART, rel_msg + 8, 1024) + 1; // Include terminator
 
     // Check the version
     current_version = *((uint32_t *)FIRMWARE_VERSION_PTR);
@@ -241,56 +167,23 @@ void handle_update(void)
         return;
     }
 
-    // Clear signature page (TODO: What about other signatures if they go in the same page?)
-    flash_erase_page(FIRMWARE_SIGNATURE_PTR);
-
-    // Clear firmware metadata
-    flash_erase_page(FIRMWARE_METADATA_PTR);
+    // Writes have been merged to save time in writing
 
     // Only save new version if it is not 0
     if (version != 0) {
-        flash_write_word(version, FIRMWARE_VERSION_PTR);
+        // flash_write_word(version, FIRMWARE_VERSION_PTR);
+        *(uint32_t*)(rel_msg+4) = version;
     } else {
-        flash_write_word(current_version, FIRMWARE_VERSION_PTR);
+        // flash_write_word(current_version, FIRMWARE_VERSION_PTR);
+        *(uint32_t*)(rel_msg+4) = current_version;
     }
 
     // Save size
-    flash_write_word(size, FIRMWARE_SIZE_PTR);
+    // flash_write_word(size, FIRMWARE_SIZE_PTR);
+    *(uint32_t*)rel_msg = size;
 
-    // Save firmware signature
-    flash_write((uint32_t*)fw_signature, FIRMWARE_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
-
-    // Write release message
-    uint8_t *rel_msg_read_ptr = rel_msg;
-    uint32_t rel_msg_write_ptr = FIRMWARE_RELEASE_MSG_PTR;
-    uint32_t rem_bytes = rel_msg_size;
-
-    // If release message goes outside of the first page, write the first full page
-    if (rel_msg_size > (FLASH_PAGE_SIZE-8)) {
-
-        // Write first page
-        flash_write((uint32_t *)rel_msg, FIRMWARE_RELEASE_MSG_PTR, (FLASH_PAGE_SIZE-8) >> 2); // This is always a multiple of 4
-
-        // Set up second page
-        rem_bytes = rel_msg_size - (FLASH_PAGE_SIZE-8);
-        rel_msg_read_ptr = rel_msg + (FLASH_PAGE_SIZE-8);
-        rel_msg_write_ptr = FIRMWARE_RELEASE_MSG_PTR2;
-        flash_erase_page(rel_msg_write_ptr);
-    }
-
-    // Program last or only page of release message
-    if (rem_bytes % 4 != 0) {
-        rem_bytes += 4 - (rem_bytes % 4); // Account for partial word
-    }
-    flash_write((uint32_t *)rel_msg_read_ptr, rel_msg_write_ptr, rem_bytes >> 2);
-
-    // Acknowledge
-    uart_writeb(HOST_UART, FRAME_OK);
-    
-    // Retrieve firmware
-    load_data(HOST_UART, FIRMWARE_STORAGE_PTR, size);
+    handle_update_write(rel_msg, fw_signature, size, rel_msg_size);
 }
-
 
 /**
  * @brief Load configuration data.
@@ -308,13 +201,10 @@ void handle_configure(void)
     size |= (((uint32_t)uart_readb(HOST_UART)) << 8);
     size |= ((uint32_t)uart_readb(HOST_UART));
 
-    flash_erase_page(CONFIGURATION_METADATA_PTR);
-    flash_write_word(size, CONFIGURATION_SIZE_PTR);
-
     uart_writeb(HOST_UART, FRAME_OK);
-    
-    // Retrieve configuration
-    load_data(HOST_UART, CONFIGURATION_STORAGE_PTR, size);
+ 
+    // Perform writes on SRAM
+    handle_configure_write(size);
 }
 
 /**
@@ -330,7 +220,7 @@ void handle_integrity_challenge(void) {
     unsigned char* start;
     uint32_t size;
     uart_read(HOST_UART, (unsigned char*)&start, sizeof(start));
-    uart_read(HOST_UART, &size, sizeof(size));
+    uart_read(HOST_UART, (unsigned char*)&size, sizeof(size));
     // Sanity check, sorry for all the casts...
     if(start > (unsigned char*)0x40000 ||
             size > 0x40000 || (start + size) > (unsigned char*)0x40000) return;

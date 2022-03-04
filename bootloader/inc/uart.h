@@ -67,7 +67,7 @@ uint32_t uart_read(uint32_t uart, uint8_t *buf, uint32_t n);
  * @param buf is a pointer to the destination for the received data.
  * @return the number of bytes read from the UART interface.
  */
-uint32_t uart_readline(uint32_t uart, uint8_t *buf);
+uint32_t uart_readline(uint32_t uart, uint8_t *buf, uint32_t n);
 
 
 /**
