@@ -37,6 +37,9 @@
 // Location of public key on EEPROM
 #define ED_PUBLIC_KEY_LOCATION 0
 
+// Location of Encryption/Decryption key on EEPROM
+#define ED_ENCRYPTION_KEY_LOCATION 1
+
 // Firmware update constants
 #define FRAME_OK 0x00
 #define FRAME_BAD 0x01

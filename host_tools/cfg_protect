@@ -14,12 +14,15 @@
 import argparse
 import logging
 from pathlib import Path
+from cryptography.fernet import Fernet
 
 from util import print_banner, CONFIGURATION_ROOT, LOG_FORMAT
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(Path(__file__).name)
 
+#DELETE IN FINAL VERSION
+aes_key = b'l_HnGnv5aZS1aCBZlPi4V5LjxWLjeh6uQaBRvia-Ecg='
 
 def protect_configuration(raw_cfg: Path, protected_cfg: Path):
     print_banner("SAFFIRe Configuration Protect Tool")
@@ -28,10 +31,16 @@ def protect_configuration(raw_cfg: Path, protected_cfg: Path):
     log.info("Reading configuration data...")
     file_data = raw_cfg.read_bytes()
 
+    log.info("Setting up Encryption...")
+    enc = Fernet(aes_key)
+
+    log.info("Encrypting the config file...")
+    enc_cfg = enc.encrypt(file_data)
+
     log.info("Packaging the configuration...")
 
     # Write to the output file
-    protected_cfg.write_bytes(file_data)
+    protected_cfg.write_bytes(enc_cfg)
 
     log.info("Configuration protected\n")
 

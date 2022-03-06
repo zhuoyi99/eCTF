@@ -29,6 +29,9 @@ ADD bootloader /bl_build
 
 # Install python package(s)
 RUN python3 -m pip install ed25519
+# After installing pip, install cryptography library
+RUN python3 -m pip install cryptography
+
 
 # Generate Secrets
 RUN python3 /host_tools/generate_secrets

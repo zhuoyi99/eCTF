@@ -14,6 +14,7 @@
 import argparse
 import json
 import logging
+from cryptography.fernet import Fernet
 from pathlib import Path
 
 from util import print_banner, FIRMWARE_ROOT, LOG_FORMAT, sign
@@ -21,6 +22,8 @@ from util import print_banner, FIRMWARE_ROOT, LOG_FORMAT, sign
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(Path(__file__).name)
 
+#DELETE IN FINAL VERSION
+aes_key = b'l_HnGnv5aZS1aCBZlPi4V5LjxWLjeh6uQaBRvia-Ecg='
 
 def protect_firmware(
     firmware_file: Path, version: int, release_message: str, protected_firmware: Path
@@ -35,17 +38,23 @@ def protect_firmware(
     signature = sign(firmware_data)
     log.info(f"Signature: {signature.hex()}")
 
+
+    log.info("Encrypting...")
+    enc = Fernet(aes_key)
+
     log.info("Packaging the firmware...")
+    log.info("Changing stuff")
 
     # Construct the metadata
     firmware_size = len(firmware_data)
-
+    enc_fw = enc.encrypt(firmware_data)
+    
     # Create firmware storage structure
     data = {
         "firmware_size": firmware_size,
         "version_num": version,
         "release_msg": release_message,
-        "firmware": firmware_data.hex(),
+        "firmware": enc_fw.hex(), # encrypted firmware
         "signature": signature.hex(),
     }
 
