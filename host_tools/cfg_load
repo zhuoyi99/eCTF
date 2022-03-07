@@ -28,6 +28,9 @@ def load_configuration(socket_number: int, config_file: Path):
 
     log.info("Reading configuration file...")
     configuration = config_file.read_bytes()
+    # Signature is prepended
+    signature = configuration[:64]
+    configuration = configuration[64:]
     size = len(configuration)
 
     # Connect to the bootloader
@@ -50,6 +53,10 @@ def load_configuration(socket_number: int, config_file: Path):
         response = sock.recv(1)
         if response != RESP_OK:
             exit(f"ERROR: Bootloader responded with {repr(response)}")
+
+        log.info("Sending signature and data...")
+        # Send signature
+        sock.sendall(signature)
 
         # Send packets
         send_packets(sock, configuration)

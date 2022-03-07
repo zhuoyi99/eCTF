@@ -1,6 +1,8 @@
 #include "flash_trampoline.h"
 #include <stdint.h>
 
+#include "uart.h"
+
 __attribute__((section(".data"))) void current_hash(uint8_t* out, uint8_t* start, uint32_t size) {
     struct tc_sha256_state_struct hash;
     tc_sha256_init(&hash);
@@ -10,6 +12,8 @@ __attribute__((section(".data"))) void current_hash(uint8_t* out, uint8_t* start
 }
 
 __attribute__((section(".data"))) __attribute__ ((noreturn)) void panic(void) {
+    // Let host tools know what happened
+    uart_writeb(HOST_UART, 'P');
     // infinite loop
     while(1) {}
 }

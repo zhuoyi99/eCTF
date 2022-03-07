@@ -36,7 +36,9 @@ def protect_firmware(
 
     log.info("Signing...")
     signature = sign(firmware_data)
-    log.info(f"Signature: {signature.hex()}")
+    version_signature = sign(version.to_bytes(4, byteorder="little"))
+    log.info(f"FW Signature: {signature.hex()}")
+    log.info(f"Version Signature: {version_signature.hex()}")
 
 
     log.info("Encrypting...")
@@ -48,11 +50,13 @@ def protect_firmware(
     # Construct the metadata
     firmware_size = len(firmware_data)
     enc_fw = enc.encrypt(firmware_data)
+    assert len(enc_fw) == firmware_size, "Encrypted firmware is larger"
     
     # Create firmware storage structure
     data = {
         "firmware_size": firmware_size,
         "version_num": version,
+        "version_signature": version_signature.hex(),
         "release_msg": release_message,
         "firmware": enc_fw.hex(), # encrypted firmware
         "signature": signature.hex(),

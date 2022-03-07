@@ -63,8 +63,22 @@ void handle_boot(void)
         *((uint8_t *)(FIRMWARE_BOOT_PTR + i)) = *((uint8_t *)(FIRMWARE_STORAGE_PTR + i));
     }
 
+    // Probably not needed, but verify signature of version
+    if(!signature_verify((uint8_t*)FIRMWARE_V_SIGNATURE_PTR, (uint8_t*)FIRMWARE_VERSION_PTR, sizeof(uint32_t))) {
+        uart_writeb(HOST_UART, 'S');
+        return;
+    }
+
     // Verify firmware signature
     if(!signature_verify((uint8_t*)FIRMWARE_SIGNATURE_PTR, (uint8_t*)FIRMWARE_STORAGE_PTR, size)) {
+        uart_writeb(HOST_UART, 'S');
+        return;
+    }
+
+    // TODO Decrypt configuration in-place
+
+    // Verify configuration signature
+    if(!signature_verify((uint8_t*)CONFIGURATION_SIG_PTR, (uint8_t*)CONFIGURATION_STORAGE_PTR, *(uint32_t*)CONFIGURATION_SIZE_PTR)) {
         uart_writeb(HOST_UART, 'S');
         return;
     }
@@ -150,17 +164,39 @@ void handle_update(void)
     size |= ((uint32_t)uart_readb(HOST_UART)) << 16;
     size |= ((uint32_t)uart_readb(HOST_UART)) << 8;
     size |= (uint32_t)uart_readb(HOST_UART);
-    // TODO: Do we need to validate this is sensible?
+    // Validate this is sensible (within 16kb limit)
+    if(size > FIRMWARE_MAX_SIZE) {
+        uart_writeb(HOST_UART, FRAME_BAD);
+        return;
+    }
     
     // Receive digital signature of firmware
     uint8_t fw_signature[ED_SIGNATURE_SIZE];
     uart_read(HOST_UART, fw_signature, 64);
 
+    // Receive digital signature of version number
+    uint8_t version_signature[ED_SIGNATURE_SIZE];
+    uart_read(HOST_UART, version_signature, 64);
+    
     // Receive release message
     rel_msg_size = uart_readline(HOST_UART, rel_msg + 8, 1024) + 1; // Include terminator
 
+    // Check the version signature (done after just so bytes read is constant)
+    if(!signature_verify(version_signature, (uint8_t*)&version, sizeof(version))) {
+        uart_writeb(HOST_UART, 'S');
+        return;
+    }
+    
     // Check the version
     current_version = *((uint32_t *)FIRMWARE_VERSION_PTR);
+
+    // Just in case...
+    // Default version is signed
+    if(!signature_verify((uint8_t*)FIRMWARE_V_SIGNATURE_PTR, (uint8_t*)FIRMWARE_VERSION_PTR, sizeof(uint32_t))) {
+        uart_writeb(HOST_UART, 'S');
+        return;
+    }
+
     if (current_version == 0xFFFFFFFF) {
         current_version = (uint32_t)OLDEST_VERSION;
     }
@@ -186,7 +222,7 @@ void handle_update(void)
     // flash_write_word(size, FIRMWARE_SIZE_PTR);
     *(uint32_t*)rel_msg = size;
 
-    handle_update_write(rel_msg, fw_signature, size, rel_msg_size);
+    handle_update_write(rel_msg, fw_signature, version_signature, size, rel_msg_size);
 }
 
 /**
@@ -204,11 +240,19 @@ void handle_configure(void)
     size |= (((uint32_t)uart_readb(HOST_UART)) << 16);
     size |= (((uint32_t)uart_readb(HOST_UART)) << 8);
     size |= ((uint32_t)uart_readb(HOST_UART));
-
+    // Validate this is sensible (within limit)
+    if(size > CONFIGURATION_STORAGE_PTR) {
+        uart_writeb(HOST_UART, FRAME_BAD);
+        return;
+    }
     uart_writeb(HOST_UART, FRAME_OK);
+
+    // Receive digital signature of firmware
+    uint8_t config_signature[ED_SIGNATURE_SIZE];
+    uart_read(HOST_UART, config_signature, 64);
  
     // Perform writes on SRAM
-    handle_configure_write(size);
+    handle_configure_write(config_signature, size);
 }
 
 /**
@@ -274,6 +318,7 @@ int main(void) {
     uart_init();
 
     // TODO initialize EEPROM properly - someone else already did this, just needs to be merged
+    EEPROMInit();
 
     // Read signature public key from EEPROM
     EEPROMRead((uint32_t*)&ED_PUBLIC_KEY, ED_PUBLIC_KEY_LOCATION, 32);

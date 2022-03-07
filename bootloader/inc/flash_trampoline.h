@@ -11,6 +11,7 @@ void current_hash(uint8_t* out, uint8_t* start, uint32_t size);
 
 /*
  * A function that bricks the device without returning to flash.
+ * Secnds the byte 'P' over UART.
  */
 __attribute__ ((noreturn)) void panic(void);
 

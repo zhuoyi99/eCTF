@@ -42,6 +42,8 @@ def boot(socket_number: int, release_message_file: Path):
         log.info("Waiting for bootloader to copy firmware to RAM...")
         msg = sock.recv(1)
         if msg != b"M":
+            if msg == b"S":
+                exit(f"Boot failed due to a signature mismatch!")
             exit(f"Boot failed with code {repr(msg)}")
 
         # Receive release message

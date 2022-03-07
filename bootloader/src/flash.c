@@ -35,7 +35,12 @@
 __attribute__((section(".data"))) int32_t flash_erase_page_unsafe(uint32_t addr)
 {
     // Erase page containing this address
-    return FlashErase(addr & ~(FLASH_PAGE_SIZE - 1));
+    uint32_t base = addr & ~(FLASH_PAGE_SIZE - 1);
+    return FlashErase(base);
+    // Verify erased page is 0
+    for(uint32_t i = 0; i < FLASH_PAGE_SIZE; i += 4) {
+        if(*((uint32_t*)(base + i)) != 0) panic();
+    }
 } 
 
 /**
@@ -72,9 +77,11 @@ __attribute__((section(".data"))) int32_t flash_write_word_unsafe(uint32_t data,
 
     // Return an error if an access violation occurred.
     if(HWREG(FLASH_FCRIS) & (FLASH_FCRIS_ARIS | FLASH_FCRIS_VOLTRIS | FLASH_FCRIS_INVDRIS | FLASH_FCRIS_PROGRIS)) {
-        // Just in case :)
         return -1;
     }
+
+    // Verify written word
+    if(*(uint32_t*)addr != data) panic();
     
     // Success
     return 0;
@@ -201,7 +208,7 @@ __attribute__((section(".data"))) void load_data_unsafe(uint32_t interface, uint
 /**
  * @brief Trusted part of firmware load.
  */
-__attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uint8_t* fw_signature, uint32_t size, uint32_t rel_msg_size) {
+__attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uint8_t* fw_signature, uint8_t* version_signature, uint32_t size, uint32_t rel_msg_size) {
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];
 
@@ -219,7 +226,10 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
     flash_erase_page_unsafe(FIRMWARE_METADATA_PTR);
 
     // Save firmware signature
-    flash_write_unsafe((uint32_t*)fw_signature, (uint8_t*)FIRMWARE_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
+    flash_write_unsafe((uint32_t*)fw_signature, FIRMWARE_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
+
+    // Save version signature
+    flash_write_unsafe((uint32_t*)version_signature, FIRMWARE_V_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
 
     // Write release message
     uint8_t *rel_msg_read_ptr = rel_msg;
@@ -230,7 +240,7 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
     if (rel_msg_size > FLASH_PAGE_SIZE) {
 
         // Write first page
-        flash_write_unsafe((uint32_t *)rel_msg, (uint32_t*)FIRMWARE_METADATA_PTR, FLASH_PAGE_SIZE >> 2); // This is always a multiple of 4
+        flash_write_unsafe((uint32_t *)rel_msg, FIRMWARE_METADATA_PTR, FLASH_PAGE_SIZE >> 2); // This is always a multiple of 4
 
         // Set up second page
         rem_bytes = rel_msg_size - FLASH_PAGE_SIZE;
@@ -260,7 +270,7 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
 /**
  * @brief Trusted part of configuration load.
  */
-__attribute__((section(".data"))) void handle_configure_write(uint32_t size) {
+__attribute__((section(".data"))) void handle_configure_write(uint8_t* config_signature, uint32_t size) {
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];
 
@@ -272,6 +282,9 @@ __attribute__((section(".data"))) void handle_configure_write(uint32_t size) {
     
     flash_erase_page_unsafe(CONFIGURATION_METADATA_PTR);
     flash_write_word_unsafe(size, CONFIGURATION_SIZE_PTR);
+
+    // Save signature
+    flash_write_unsafe((uint32_t*)config_signature, CONFIGURATION_SIG_PTR, ED_SIGNATURE_SIZE/4);
 
     // Retrieve configuration
     load_data_unsafe(HOST_UART, CONFIGURATION_STORAGE_PTR, size);
