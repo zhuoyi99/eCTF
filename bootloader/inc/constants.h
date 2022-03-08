@@ -45,9 +45,10 @@
 #define ED_SIGNATURE_SIZE 64
 // Location of public key on EEPROM
 #define ED_PUBLIC_KEY_LOCATION 0
+#define DEFAULT_VERSION_SIGNATURE_LOCATION 128
 
 // Location of Encryption/Decryption key on EEPROM
-#define ED_ENCRYPTION_KEY_LOCATION 1
+#define ED_ENCRYPTION_KEY_LOCATION 64
 
 // Firmware update constants
 #define FRAME_OK 0x00

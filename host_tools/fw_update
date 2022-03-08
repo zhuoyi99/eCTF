@@ -42,8 +42,7 @@ def update_firmware(socket_number: int, firmware_file: Path):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect(("saffire-net", socket_number))
 
-        # Perform an intergrity check - currently not compatible with functional requirements...?
-        # integrity_challenge(sock)
+        integrity_challenge(sock)
 
         # Send update command
         log.info("Sending update command...")

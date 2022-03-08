@@ -73,38 +73,46 @@ from secrets import token_bytes
 from hashlib import sha512
 import struct
 
-def integrity_challenge(sock: socket.socket, checkWholeRegion=True) -> None:
+def integrity_challenge(sock: socket.socket) -> None:
     """
     Checks the integrity of the bootloader and exits on failure.
     """
 
+    with open("/bootloader/bootloader.bin", "rb") as f:
+        fw_data = f.read()
     start = 0x5800
-    end = 0x40000
-    if not checkWholeRegion:
-        end = 0x2B000
+    end = 0x2B000
+    fw_data = fw_data.ljust(end - start, b"\xff")
 
     sock.sendall(b"I");
-    assert sock.recv(1) == b"R"; # Ready
+    recv = sock.recv(1)
+    if recv != b"R":
+        if recv == b"P":
+            log.error("[INTEGRITY CHECK] Bootloader previously detected integrity violation!")
+            exit(-1)
+        log.error("[INTEGRITY CHECK] Failed to start integrity challenge")
+        exit(1)
+
     challenge = token_bytes(12)
-    sock.sendall(struct.pack("<II", start, end - start))
+    import time
+    start_time = time.time()
+    sock.sendall(struct.pack("<II", start, len(fw_data)))
     sock.sendall(challenge)
 
-    with open("/bootloader/bootloader.bin", "rb") as f:
-        fw_data = f.read()[:end - start]
-
     computed_hash = sha512(challenge + fw_data).digest()
-    log.info(f"Challenge: {challenge.hex()}")
-    log.info(f"Computed: {computed_hash.hex()}")
+    log.info(f"[INTEGRITY CHECK] Challenge: {challenge.hex()}")
+    log.info(f"[INTEGRITY CHECK] Computed:  {computed_hash.hex()}")
 
     recv = b""
     while len(recv) != 512//8:
         recv_chunk = sock.recv(512//8 - len(recv))
         if recv_chunk == b"": break # Forcefully in case of closed
         recv += recv_chunk
-    log.info(f"Recieved: {recv.hex()}")
+    log.info(f"[INTEGRITY CHECK] Recieved:  {recv.hex()}")
+    log.info(f"[INTEGRITY CHECK] Time: {time.time() - start_time} sec")
 
     if recv != computed_hash:
-        log.error("ERROR: Could not verify integrity of bootloader!")
+        log.error("Could not verify integrity of bootloader!")
         exit(-1)
 
-    log.info("OK!")
+    log.info("[INTEGRITY CHECK] Looks good.")

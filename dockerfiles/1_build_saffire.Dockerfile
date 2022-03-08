@@ -17,6 +17,11 @@ RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y python3 python3-pip \
     binutils-arm-none-eabi gcc-arm-none-eabi make
 
+# Install python package(s)
+RUN python3 -m pip install ed25519
+# After installing pip, install cryptography library
+RUN python3 -m pip install cryptography
+
 # Create bootloader binary folder
 RUN mkdir /bootloader
 
@@ -27,18 +32,14 @@ RUN mkdir /secrets
 ADD host_tools/ /host_tools
 ADD bootloader /bl_build
 
-# Install python package(s)
-RUN python3 -m pip install ed25519
-# After installing pip, install cryptography library
-RUN python3 -m pip install cryptography
-
-
 # Generate Secrets
 RUN python3 /host_tools/generate_secrets
 
 # Create EEPROM contents
 # Example: RUN echo "Bootloader Data" > /bootloader/eeprom.bin
-RUN cp /secrets/ed_public_key.bin /bootloader/eeprom.bin
+RUN cat /secrets/ed_public_key.bin > /bootloader/eeprom.bin
+RUN cat /secrets/aes_key_bootloader.bin >> /bootloader/eeprom.bin
+RUN cat /secrets/default_ver_signature.bin >> /bootloader/eeprom.bin
 
 # Compile bootloader
 WORKDIR /bl_build

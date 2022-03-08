@@ -1,7 +1,10 @@
 #ifndef FLASH_TRAMPOLINE_H
 #define FLASH_TRAMPOLINE_H
 
-#include <tinycrypt/sha256.h>
+// #include <tinycrypt/sha256.h>
+#include <sha256.h>
+#include <stdint.h>
+#define TC_SHA256_DIGEST_SIZE 32
 
 /*
  * Returns the hash of all flash memory OUTSIDE the region start, start+size.

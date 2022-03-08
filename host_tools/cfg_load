@@ -17,7 +17,7 @@ from pathlib import Path
 import socket
 import struct
 
-from util import print_banner, send_packets, RESP_OK, CONFIGURATION_ROOT, LOG_FORMAT
+from util import print_banner, send_packets, RESP_OK, CONFIGURATION_ROOT, LOG_FORMAT, integrity_challenge
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(Path(__file__).name)
@@ -37,6 +37,8 @@ def load_configuration(socket_number: int, config_file: Path):
     log.info("Connecting socket...")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect(("saffire-net", socket_number))
+
+        integrity_challenge(sock)
 
         # Send configure command
         log.info("Sending configure command...")

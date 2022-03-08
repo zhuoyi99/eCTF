@@ -16,7 +16,7 @@ import logging
 from pathlib import Path
 import socket
 
-from util import print_banner, RELEASE_MESSAGES_ROOT, LOG_FORMAT
+from util import print_banner, RELEASE_MESSAGES_ROOT, LOG_FORMAT, integrity_challenge
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(Path(__file__).name)
@@ -28,6 +28,8 @@ def boot(socket_number: int, release_message_file: Path):
     # Connect to the bootloader
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect(("saffire-net", socket_number))
+
+        integrity_challenge(sock)
 
         # Send boot command
         log.info("Sending boot command...")
@@ -43,7 +45,8 @@ def boot(socket_number: int, release_message_file: Path):
         msg = sock.recv(1)
         if msg != b"M":
             if msg == b"S":
-                exit(f"Boot failed due to a signature mismatch!")
+                log.error(f"Boot failed due to a signature mismatch!")
+                exit(-1)
             exit(f"Boot failed with code {repr(msg)}")
 
         # Receive release message

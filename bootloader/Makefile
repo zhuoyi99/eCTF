@@ -74,12 +74,19 @@ ${COMPILER}/bootloader.axf: ${CRYPTPATH}/add_scalar.o ${CRYPTPATH}/fe.o ${CRYPTP
 ################## end signature lib ###############
 
 ################ start tinycrypt ###################
-TCRYPTPATH=${ROOT}/lib/tinycrypt/lib
-VPATH+=${TCRYPTPATH}/source
-IPATH+=${TCRYPTPATH}/include
-CFLAGS+=-DTINYPATH=${TCRYPTPATH}
-${COMPILER}/bootloader.axf: ${COMPILER}/utils.o ${COMPILER}/sha256.o
+# TCRYPTPATH=${ROOT}/lib/tinycrypt/lib
+# VPATH+=${TCRYPTPATH}/source
+# IPATH+=${TCRYPTPATH}/include
+# CFLAGS+=-DTINYPATH=${TCRYPTPATH}
+# ${COMPILER}/bootloader.axf: ${COMPILER}/utils.o ${COMPILER}/sha256.o
 ################## end tinycrypt ###################
+
+############### sha256 code
+SHAPATH=${ROOT}/lib/sha256
+VPATH+=${SHAPATH}
+IPATH+=${SHAPATH}
+${COMPILER}/bootloader.axf: ${SHAPATH}/sha256.o
+###########################
 
 # build libraries
 ${TIVA_ROOT}/driverlib/${COMPILER}/libdriver.a:

@@ -39,7 +39,8 @@ def protect_configuration(raw_cfg: Path, protected_cfg: Path):
     enc = Fernet(aes_key)
 
     log.info("Encrypting the config file...")
-    enc_cfg = enc.encrypt(file_data)
+    # enc_cfg = enc.encrypt(file_data)
+    enc_cfg = file_data
     assert len(enc_cfg) == len(file_data), "Encrypted config is larger"
 
     log.info("Packaging the configuration...")

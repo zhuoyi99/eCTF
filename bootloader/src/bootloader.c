@@ -19,7 +19,7 @@ char DUMMY_ENC_KEY[32] = {0x97,0xf1,0xe7,0x1a,0x7b,0xf9,0x69,0x94,0xb5,0x68,0x20
 #include <stdbool.h>
 
 #include "driverlib/interrupt.h"
-// TODO replace with wrappers
+#include "driverlib/sysctl.h"
 #include "driverlib/eeprom.h"
 
 #include "constants.h"
@@ -172,11 +172,11 @@ void handle_update(void)
     
     // Receive digital signature of firmware
     uint8_t fw_signature[ED_SIGNATURE_SIZE];
-    uart_read(HOST_UART, fw_signature, 64);
+    uart_read(HOST_UART, fw_signature, ED_SIGNATURE_SIZE);
 
     // Receive digital signature of version number
     uint8_t version_signature[ED_SIGNATURE_SIZE];
-    uart_read(HOST_UART, version_signature, 64);
+    uart_read(HOST_UART, version_signature, ED_SIGNATURE_SIZE);
     
     // Receive release message
     rel_msg_size = uart_readline(HOST_UART, rel_msg + 8, 1024) + 1; // Include terminator
@@ -249,7 +249,7 @@ void handle_configure(void)
 
     // Receive digital signature of firmware
     uint8_t config_signature[ED_SIGNATURE_SIZE];
-    uart_read(HOST_UART, config_signature, 64);
+    uart_read(HOST_UART, config_signature, ED_SIGNATURE_SIZE);
  
     // Perform writes on SRAM
     handle_configure_write(config_signature, size);
@@ -317,12 +317,19 @@ int main(void) {
     // Initialize IO components
     uart_init();
 
-    // TODO initialize EEPROM properly - someone else already did this, just needs to be merged
+    // Initialize EEPROM
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0);
     EEPROMInit();
 
-    // Read signature public key from EEPROM
+    // Read signature public key from EEPROM - this block cannot be hidden
     EEPROMRead((uint32_t*)&ED_PUBLIC_KEY, ED_PUBLIC_KEY_LOCATION, 32);
-    EEPROMBlockHide(EEPROMBlockFromAddr(ED_PUBLIC_KEY_LOCATION));
+
+    { // Anonymous block
+        uint8_t default_version_signature[ED_SIGNATURE_SIZE];
+        EEPROMRead((uint32_t*)default_version_signature, DEFAULT_VERSION_SIGNATURE_LOCATION, ED_SIGNATURE_SIZE);
+        EEPROMBlockHide(EEPROMBlockFromAddr(DEFAULT_VERSION_SIGNATURE_LOCATION));
+        flash_write((uint32_t*)default_version_signature, FIRMWARE_V_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
+    }
 
     // Handle host commands
     while (1) {
