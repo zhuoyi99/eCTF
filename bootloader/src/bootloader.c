@@ -241,7 +241,7 @@ void handle_configure(void)
     size |= (((uint32_t)uart_readb(HOST_UART)) << 8);
     size |= ((uint32_t)uart_readb(HOST_UART));
     // Validate this is sensible (within limit)
-    if(size > CONFIGURATION_STORAGE_PTR) {
+    if(size > CONFIGURATION_MAX_SIZE) {
         uart_writeb(HOST_UART, FRAME_BAD);
         return;
     }
