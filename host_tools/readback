@@ -16,7 +16,7 @@ import logging
 import socket
 from pathlib import Path
 
-from util import print_banner, LOG_FORMAT, integrity_challenge
+from util import print_banner, LOG_FORMAT, integrity_challenge, verify
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(Path(__file__).name)
@@ -63,22 +63,43 @@ def readback(socket_number, region, num_bytes):
             sock.send(b"Q")
             return
 
-        # Send the number of bytes to read
-        size = int.to_bytes(num_bytes, 4, "big")
-        sock.send(size)
+        # We don't send the number of bytes to read, we read the whole section and verify it / decrypt on our side
+        bytes_remaining = 4 + 64 
+        num_bytes_and_sig = b""
+        while bytes_remaining > 0:
+            data = sock.recv(num_bytes)
+            num_received = len(data)
+            num_bytes_and_sig += data
+            bytes_remaining -= num_received
+
+        num_bytes_read = int.from_bytes(num_bytes_and_sig[:4], byteorder="little")
+        signature = num_bytes_and_sig[4:]
+
+        # TODO recieve AES IV
+
+        # Notify ready for firmware data
+        sock.send(b"R")
 
         # Receive firmware data
         log.info("Receiving firmware...")
-        bytes_remaining = num_bytes
+        bytes_remaining = num_bytes_read
         fw = b""
         while bytes_remaining > 0:
-            num_bytes = 4096 if bytes_remaining > 4096 else bytes_remaining
-            data = sock.recv(num_bytes)
+            num_bytes_read = 4096 if bytes_remaining > 4096 else bytes_remaining
+            data = sock.recv(num_bytes_read)
             num_received = len(data)
             fw += data
             bytes_remaining -= num_received
 
-        print(f"Memory Readback Data: {fw.hex()}\n")
+        # TODO decrypt
+
+        if not verify(fw, signature):
+            log.error("Failed to verify signature of readback data!");
+            exit(-1)
+
+        log.info("Readback data verified OK.")
+
+        print(f"Memory Readback Data: {fw[:num_bytes].hex()}\n")
 
 
 def main():

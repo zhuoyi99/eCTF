@@ -69,6 +69,15 @@ def sign(msg: bytes) -> bytes:
         SIGNING_KEY = ed25519.SigningKey(f.read())
     return SIGNING_KEY.sign(msg)
 
+def verify(msg: bytes, sig: bytes) -> bool:
+    with open("/secrets/ed_public_key.bin", "rb") as f:
+        VERIFYING_KEY = ed25519.VerifyingKey(f.read()[:32])
+    try:
+        VERIFYING_KEY.verify(sig, msg)
+    except ed25519.BadSignatureError:
+        return False
+    return True
+
 from secrets import token_bytes
 from hashlib import sha512
 import struct

@@ -106,6 +106,7 @@ void handle_readback(void)
 {
     uint8_t region;
     uint8_t *address;
+    uint8_t *signature;
     uint32_t size = 0;
     
     // Acknowledge the host
@@ -117,22 +118,31 @@ void handle_readback(void)
     if (region == 'F') {
         // Set the base address for the readback
         address = (uint8_t *)FIRMWARE_STORAGE_PTR;
+        size = *((uint32_t *)FIRMWARE_SIZE_PTR);
+        signature = (uint8_t *)FIRMWARE_SIGNATURE_PTR;
         // Acknowledge the host
         uart_writeb(HOST_UART, 'F');
     } else if (region == 'C') {
         // Set the base address for the readback
         address = (uint8_t *)CONFIGURATION_STORAGE_PTR;
-        // Acknowledge the hose
+        size = *((uint32_t *)CONFIGURATION_SIZE_PTR);
+        signature = (uint8_t *)CONFIGURATION_SIG_PTR;
+        // Acknowledge the host
         uart_writeb(HOST_UART, 'C');
     } else {
         return;
     }
+    
+    // Read out size
+    uart_write(HOST_UART, &size, sizeof(size));
 
-    // Receive the size to send back to the host
-    size = ((uint32_t)uart_readb(HOST_UART)) << 24;
-    size |= ((uint32_t)uart_readb(HOST_UART)) << 16;
-    size |= ((uint32_t)uart_readb(HOST_UART)) << 8;
-    size |= (uint32_t)uart_readb(HOST_UART);
+    // Read out signature
+    uart_write(HOST_UART, signature, ED_SIGNATURE_SIZE);
+    
+    // TODO Read out IV
+    
+    // Wait for host to be ready
+    uart_readb(HOST_UART);
 
     // Read out the memory
     uart_write(HOST_UART, address, size);
