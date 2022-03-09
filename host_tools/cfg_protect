@@ -14,7 +14,6 @@
 import argparse
 import logging
 from pathlib import Path
-from cryptography.fernet import Fernet
 
 from util import print_banner, CONFIGURATION_ROOT, LOG_FORMAT, sign
 
@@ -36,17 +35,16 @@ def protect_configuration(raw_cfg: Path, protected_cfg: Path):
     log.info(f"Signature: {signature.hex()}")
 
     log.info("Setting up Encryption...")
-    enc = Fernet(aes_key)
 
     log.info("Encrypting the config file...")
     # enc_cfg = enc.encrypt(file_data)
-    enc_cfg = file_data
-    assert len(enc_cfg) == len(file_data), "Encrypted config is larger"
+    #enc_cfg = file_data
+    #assert len(enc_cfg) == len(file_data), "Encrypted config is larger"
 
     log.info("Packaging the configuration...")
 
     # Write to the output file
-    protected_cfg.write_bytes(signature + enc_cfg)
+    protected_cfg.write_bytes(signature + file_data)
 
     log.info("Configuration protected\n")
 

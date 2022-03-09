@@ -17,7 +17,7 @@ FROM ${SYSNAME}/host_tools as host_tools
 
 FROM ${PARENT}
 
-RUN apk update && apk upgrade && apk add python3
+RUN apk update && apk upgrade && apk add python3 --no-cache
 
 # Add environment customizations here
 # NOTE: do this first so Docker can used cached containers to skip reinstalling everything

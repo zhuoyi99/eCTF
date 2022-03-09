@@ -14,7 +14,9 @@
 import argparse
 import json
 import logging
-from cryptography.fernet import Fernet
+from ssl import _Cipher
+from cryptography.hazmat.primitives.ciphers import algorithms, modes, Cipher
+from cryptography.hazmat.backends import default_backend
 from pathlib import Path
 
 from util import print_banner, FIRMWARE_ROOT, LOG_FORMAT, sign
@@ -22,8 +24,6 @@ from util import print_banner, FIRMWARE_ROOT, LOG_FORMAT, sign
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(Path(__file__).name)
 
-#DELETE IN FINAL VERSION
-aes_key = b'l_HnGnv5aZS1aCBZlPi4V5LjxWLjeh6uQaBRvia-Ecg='
 
 def protect_firmware(
     firmware_file: Path, version: int, release_message: str, protected_firmware: Path
@@ -42,15 +42,23 @@ def protect_firmware(
 
 
     log.info("Encrypting...")
-    enc = Fernet(aes_key)
-
+    key_file = Path("/secrets/encryption_key.bin")
+    iv_file = Path("/secrets/encryption_iv.bin")
+    key = key_file.read_bytes()[:32]
+    iv = iv_file.read_bytes()[:16]
+    print("KEY = ", key.hex())
+    print("IV = ", iv.hex())
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), default_backend())
+    padding = 32 + (32 -len(firmware_data)%32)
+    firmware_data+="\x00"*padding
+    encryptor = cipher.encryptor()
+    enc_fw = encryptor.update(firmware_data) + encryptor.finalize()
     log.info("Packaging the firmware...")
     log.info("Changing stuff")
 
     # Construct the metadata
     firmware_size = len(firmware_data)
     # enc_fw = enc.encrypt(firmware_data)
-    enc_fw = firmware_data
     assert len(enc_fw) == firmware_size, "Encrypted firmware is larger"
     
     # Create firmware storage structure

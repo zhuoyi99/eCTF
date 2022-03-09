@@ -48,7 +48,8 @@
 #define DEFAULT_VERSION_SIGNATURE_LOCATION 128
 
 // Location of Encryption/Decryption key on EEPROM
-#define ED_ENCRYPTION_KEY_LOCATION 64
+#define ED_ENCRYPTION_KEY_LOCATION 3
+#define ED_ENCRYPTION_IV_LOCATION 4
 
 // Firmware update constants
 #define FRAME_OK 0x00

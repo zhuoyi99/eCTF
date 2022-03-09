@@ -45,25 +45,25 @@ all: ${COMPILER}/bootloader.axf
 # make sure submodule has been pulled (run `git submodule update --init`)
 # uncomment next line to activate
 # EXAMPLE_AES=foo
-ifdef EXAMPLE_AES
-# path to crypto library
-CRYPTOPATH=${ROOT}/lib/tiny-AES-c
+# ifdef EXAMPLE_AES
+# # path to crypto library
+# CRYPTOPATH=${ROOT}/lib/tiny-AES-c
 
-# add path to crypto source files to source path
-VPATH+=${CRYPTOPATH}
+# # add path to crypto source files to source path
+# VPATH+=${CRYPTOPATH}
 
-# add crypto library to includes path
-IPATH+=${CRYPTOPATH}
+# # add crypto library to includes path
+# IPATH+=${CRYPTOPATH}
 
 # add crypto object file to includes path
 # LDFLAGS+=${COMPILER}/aes.o
 
 # add compiler flag to enable example AES code 
-CFLAGS+=-DEXAMPLE_AES
+# CFLAGS+=-DEXAMPLE_AES
 
-# add rule to build crypto library
-${COMPILER}/bootloader.axf: ${COMPILER}/aes.o
-endif
+# # add rule to build crypto library
+# ${COMPILER}/bootloader.axf: ${COMPILER}/aes.o
+# endif
 ################ end crypto example ################
 
 ################ start signature lib ###############
@@ -74,11 +74,11 @@ ${COMPILER}/bootloader.axf: ${CRYPTPATH}/add_scalar.o ${CRYPTPATH}/fe.o ${CRYPTP
 ################## end signature lib ###############
 
 ################ start tinycrypt ###################
-# TCRYPTPATH=${ROOT}/lib/tinycrypt/lib
-# VPATH+=${TCRYPTPATH}/source
-# IPATH+=${TCRYPTPATH}/include
-# CFLAGS+=-DTINYPATH=${TCRYPTPATH}
-# ${COMPILER}/bootloader.axf: ${COMPILER}/utils.o ${COMPILER}/sha256.o
+TCRYPTPATH=${ROOT}/lib/tinycrypt/lib
+VPATH+=${TCRYPTPATH}/source
+IPATH+=${TCRYPTPATH}/include
+CFLAGS+=-DTINYPATH=${TCRYPTPATH}
+${COMPILER}/bootloader.axf: ${COMPILER}/aes_encrypt.o ${COMPILER}/aes_decrypt.o ${COMPILER}/cbc_mode.o ${COMPILER}/utils.o
 ################## end tinycrypt ###################
 
 ############### sha256 code

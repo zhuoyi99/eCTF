@@ -38,8 +38,11 @@ RUN python3 /host_tools/generate_secrets
 # Create EEPROM contents
 # Example: RUN echo "Bootloader Data" > /bootloader/eeprom.bin
 RUN cat /secrets/ed_public_key.bin > /bootloader/eeprom.bin
-RUN cat /secrets/aes_key_bootloader.bin >> /bootloader/eeprom.bin
+#RUN cat /secrets/aes_key_bootloader.bin >> /bootloader/eeprom.bin
 RUN cat /secrets/default_ver_signature.bin >> /bootloader/eeprom.bin
+RUN cat /secrets/encryption_key.bin >> /bootloader/eeprom.bin
+RUN cat /secrets/encryption_iv.bin >> /bootloader/eeprom.bin
+
 
 # Compile bootloader
 WORKDIR /bl_build
