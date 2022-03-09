@@ -11,38 +11,35 @@
  * @copyright Copyright (c) 2022 The MITRE Corporation
  */
 
-// DUMMY FW/CFG ENCRYPTION KEY ***** REMOVE IN THE SUBMISSSION*******
-char DUMMY_ENC_KEY[32] = {0x97,0xf1,0xe7,0x1a,0x7b,0xf9,0x69,0x94,0xb5,0x68,0x20,0x59,0x94,0xf8,
-    0xb8,0x57,0x92,0xe3,0xc5,0x62,0xe3,0x7a,0x1e,0xae,0x41,0xa0,0x51,0xbe,0x26,0xbe,0x11,0xc8};
-
 #include <stdint.h>
 #include <stdbool.h>
 
 #include "driverlib/interrupt.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/eeprom.h"
+#include "inc/hw_eeprom.h"
+#include "inc/hw_types.h"
 
 #include "constants.h"
 #include "flash.h"
+#include "mpu.h"
 #include "uart.h"
 
-#include "tinycrypt/aes.h"
-#include "tinycrypt/cbc_mode.h"
-// this will run if EXAMPLE_AES is defined in the Makefile (see line 54)
-#ifdef EXAMPLE_AES
+// #include "tinycrypt/aes.h"
+// #include "tinycrypt/cbc_mode.h"
 #include "aes.h"
-#endif
 
 // ED25519 Signatures
 #include "ed25519.h"
-// SRAM variable (TODO: Move this?)
+// SRAM variable
 unsigned char ED_PUBLIC_KEY[32];
 // Helper to verify signatures
 #define signature_verify(signature, storage, size) ed25519_verify(signature, storage, size, ED_PUBLIC_KEY)
 
 // KEY and schedule struct for firmware decryption
 unsigned char ENC_KEY[32];
-struct tc_aes_key_sched_struct sched;
+// struct tc_aes_key_sched_struct sched;
+struct AES_ctx ctx;
 
 // SHA512 from the ED25519 library
 #include "sha512.h"
@@ -54,7 +51,12 @@ struct tc_aes_key_sched_struct sched;
 */
 void Decrypt(uint8_t * out, const uint8_t * in, const uint8_t* iv, unsigned int len)
 {
-    tc_cbc_mode_decrypt(out, len, in, len, iv, &sched);
+    AES_ctx_set_iv(&ctx, iv);
+    // Copy words
+    for(uint32_t i = 0; i < len / 4; i++) {
+        *((uint32_t*)out + i) = *((uint32_t*)in + i);
+    }
+    AES_CBC_decrypt_buffer(&ctx, out, len);
 }
 
 /**
@@ -74,7 +76,7 @@ void handle_boot(void)
 
     // TODO this might not fit with max size FW, need to checkkkk
     uint8_t fbuf[size];
-    Decrypt(fbuf, (uint8_t*)(FIRMWARE_STORAGE_PTR), (uint8_t*)FIRMWARE_IV_PTR, size);
+    Decrypt(fbuf, (uint8_t*)(FIRMWARE_STORAGE_PTR), (uint8_t*)(FIRMWARE_VIV_PTR+4), size);
     // Copy the firmware into the Boot RAM section
     for (i = 0; i < size; i++) {
         *((uint8_t *)(FIRMWARE_BOOT_PTR + i)) = fbuf[i];
@@ -82,14 +84,11 @@ void handle_boot(void)
 
     // Probably not needed, but verify signature of version
     uint8_t version_and_iv[20];
-    // Set first 4 bytes to cur version
-    *(uint32_t*)version_and_iv = *((uint32_t *)FIRMWARE_VERSION_PTR);
-    // Copy next 16 from IV (saved)
-    for(uint32_t i = 0; i < 4; i++)
-        *((uint32_t*)version_and_iv + i + 1) = *((uint32_t*)FIRMWARE_IV_PTR + i);
+    for(uint32_t i = 0; i < 5; i++)
+        *((uint32_t*)version_and_iv + i) = *((uint32_t*)FIRMWARE_VIV_PTR + i);
 
     if(!signature_verify((uint8_t*)FIRMWARE_V_SIGNATURE_PTR, (uint8_t*)version_and_iv, sizeof(version_and_iv))) {
-        uart_writeb(HOST_UART, 'S');
+        uart_writeb(HOST_UART, 'Z');
         return;
     }
 
@@ -103,7 +102,7 @@ void handle_boot(void)
     
     // Verify configuration signature
     if(!signature_verify((uint8_t*)CONFIGURATION_SIG_PTR, (uint8_t*)CONFIGURATION_STORAGE_PTR, *(uint32_t*)CONFIGURATION_SIZE_PTR)) {
-        uart_writeb(HOST_UART, 'S');
+        uart_writeb(HOST_UART, 'C');
         return;
     }
 
@@ -145,7 +144,7 @@ void handle_readback(void)
         address = (uint8_t *)FIRMWARE_STORAGE_PTR;
         size = *((uint32_t *)FIRMWARE_SIZE_PTR);
         signature = (uint8_t *)FIRMWARE_SIGNATURE_PTR;
-        iv = (uint8_t *)FIRMWARE_IV_PTR;
+        iv = (uint8_t *)FIRMWARE_VIV_PTR;
         // Acknowledge the host
         uart_writeb(HOST_UART, 'F');
     } else if (region == 'C') {
@@ -166,7 +165,7 @@ void handle_readback(void)
     // Read out signature
     uart_write(HOST_UART, signature, ED_SIGNATURE_SIZE);
     
-    // Read out IV
+    // Read out signed ver, IV
     uart_write(HOST_UART, iv, 16);
     
     // Wait for host to be ready
@@ -189,7 +188,6 @@ void handle_update(void)
     uint32_t size = 0;
     uint32_t rel_msg_size = 0;
     uint8_t rel_msg[1024 + 1 + 4 + 4]; // 1024 + terminator + version + size
-    uint8_t iv[16];
     uint8_t version_and_iv[20];
 
     // Acknowledge the host
@@ -213,11 +211,8 @@ void handle_update(void)
     }
 
     // Receive IV
-    uart_read(HOST_UART, iv, 16);
-    // Copy IV into signature check buffer
-    for(uint32_t i = 0; i < 4; i++)
-        *((uint32_t*)version_and_iv + i + 1) = *((uint32_t*)iv + i);
-    
+    uart_read(HOST_UART, version_and_iv+4, 16);
+
     // Receive digital signature of firmware
     uint8_t fw_signature[ED_SIGNATURE_SIZE];
     uart_read(HOST_UART, fw_signature, ED_SIGNATURE_SIZE);
@@ -238,16 +233,14 @@ void handle_update(void)
     // Check the version
     current_version = *((uint32_t *)FIRMWARE_VERSION_PTR);
 
+    uint8_t version_and_iv_old[20];
     // Just in case...
     // Default version is signed with default IV in storage 0xff...
-    // Set first 4 bytes to cur version
-    *(uint32_t*)version_and_iv = current_version;
-    // Copy next 16 from IV (saved)
-    for(uint32_t i = 0; i < 4; i++)
-        *((uint32_t*)version_and_iv + i + 1) = *((uint32_t*)FIRMWARE_IV_PTR + i);
+    for(uint32_t i = 0; i < 5; i++)
+        *((uint32_t*)version_and_iv_old + i) = *((uint32_t*)FIRMWARE_VIV_PTR + i);
 
-    if(!signature_verify((uint8_t*)FIRMWARE_V_SIGNATURE_PTR, (uint8_t*)version_and_iv, sizeof(version_and_iv))) {
-        uart_writeb(HOST_UART, 'S');
+    if(!signature_verify((uint8_t*)FIRMWARE_V_SIGNATURE_PTR, (uint8_t*)version_and_iv_old, sizeof(version_and_iv_old))) {
+        uart_writeb(HOST_UART, 'Z');
         return;
     }
 
@@ -263,7 +256,7 @@ void handle_update(void)
 
     // Writes have been merged to save time in writing
 
-    // Only save new version if it is not 0
+    // Only save new version to permanent area if it is not 0
     if (version != 0) {
         // flash_write_word(version, FIRMWARE_VERSION_PTR);
         *(uint32_t*)(rel_msg+4) = version;
@@ -276,7 +269,7 @@ void handle_update(void)
     // flash_write_word(size, FIRMWARE_SIZE_PTR);
     *(uint32_t*)rel_msg = size;
 
-    handle_update_write(rel_msg, fw_signature, iv, version_signature, size, rel_msg_size);
+    handle_update_write(rel_msg, fw_signature, version_and_iv, version_signature, size, rel_msg_size);
 }
 
 /**
@@ -343,30 +336,16 @@ void handle_integrity_challenge(void) {
  * @return int
  */
 int main(void) {
+    // Stack space collision causes problems after a soft reset here.
+    // I am not sure why it's not properly restored by Bootloader_Startup, but the instructions get clobbered. Without this line, sha256_transform contains an illegal instruction.
+    *((uint32_t*)0x200000fc) = 0x3114f8d7;
+
+    // Enable MPU
+    mpu_setup();
+    // Enter unpriviledged mode
+    __asm volatile ("mov r0, #1\nmsr CONTROL, r0" : : : "r0");
 
     uint8_t cmd = 0;
-
-#ifdef EXAMPLE_AES
-    // -------------------------------------------------------------------------
-    // example encryption using tiny-AES-c
-    // -------------------------------------------------------------------------
-    struct AES_ctx ctx;
-    uint8_t key[16] = { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 
-                        0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf };
-    uint8_t plaintext[16] = "0123456789abcdef";
-
-    // initialize context
-    AES_init_ctx(&ctx, key);
-
-    // encrypt buffer (encryption happens in place)
-    AES_ECB_encrypt(&ctx, plaintext);
-
-    // decrypt buffer (decryption happens in place)
-    AES_ECB_decrypt(&ctx, plaintext);
-    // -------------------------------------------------------------------------
-    // end example
-    // -------------------------------------------------------------------------
-#endif
 
     // Initialize IO components
     uart_init();
@@ -380,16 +359,15 @@ int main(void) {
     EEPROMRead((uint32_t*)&ENC_KEY, ED_ENCRYPTION_KEY_LOCATION, 32);
 
     // Set up the decryption key
+    AES_init_ctx(&ctx, ENC_KEY);
 
-    tc_aes128_set_decrypt_key(&sched, ENC_KEY);
-
-    // Only read if signature is empty (prevent problems on reboot)
-    if(*((uint32_t *)FIRMWARE_VERSION_PTR) == 0xFFFFFFFF) {
+    // Only read if not before
+    if((HWREG(EEPROM_EEHIDE) & (1 << EEPROMBlockFromAddr(DEFAULT_VERSION_SIGNATURE_LOCATION))) == 0) {
         uint8_t default_version_signature[ED_SIGNATURE_SIZE];
         EEPROMRead((uint32_t*)default_version_signature, DEFAULT_VERSION_SIGNATURE_LOCATION, ED_SIGNATURE_SIZE);
+        EEPROMBlockHide(EEPROMBlockFromAddr(DEFAULT_VERSION_SIGNATURE_LOCATION));
         flash_write((uint32_t*)default_version_signature, FIRMWARE_V_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
     }
-    EEPROMBlockHide(EEPROMBlockFromAddr(DEFAULT_VERSION_SIGNATURE_LOCATION));
 
     // Handle host commands
     while (1) {

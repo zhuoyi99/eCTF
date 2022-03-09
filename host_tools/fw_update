@@ -67,6 +67,12 @@ def update_firmware(socket_number: int, firmware_file: Path):
         sock.sendall(payload)
         response = sock.recv(1)
         if response != RESP_OK:
+            if response == b'S':
+                log.error("Bootloader could not verify firmware version signature")
+                exit(-1)
+            if response == b'Z':
+                log.error("Bootloader found integrity violation on previous version")
+                exit(-1)
             exit(f"ERROR: Bootloader responded with {repr(response)}")
 
         # Send packets

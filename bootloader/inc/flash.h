@@ -78,11 +78,17 @@ void load_data_unsafe(uint32_t interface, uint32_t dst, uint32_t size);
 /**
  * @brief Trusted part of firmware load.
  */
-void handle_update_write(uint8_t* rel_msg, uint8_t* fw_signature, uint8_t* iv, uint8_t* version_signature, uint32_t size, uint32_t rel_msg_size);
+void handle_update_write(uint8_t* rel_msg, uint8_t* fw_signature, uint8_t* version_and_iv, uint8_t* version_signature, uint32_t size, uint32_t rel_msg_size);
 
 /**
  * @brief Trusted part of configuration load.
  */
 void handle_configure_write(uint8_t* config_signature, uint32_t size);
+
+/**
+ * @brief Forcefully disable JTAG interface.
+ * Cannot be used since it commits permanently
+ */
+// void flash_disable_jtag();
 
 #endif // FLASH_H

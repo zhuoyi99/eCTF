@@ -45,7 +45,13 @@ def boot(socket_number: int, release_message_file: Path):
         msg = sock.recv(1)
         if msg != b"M":
             if msg == b"S":
-                log.error(f"Boot failed due to a signature mismatch!")
+                log.error(f"Boot failed due to firmware signature mismatch!")
+                exit(-1)
+            if msg == b"Z":
+                log.error(f"Boot failed due to version number/IV signature mismatch!")
+                exit(-1)
+            if msg == b"C":
+                log.error(f"Boot failed due to configuration rsignature mismatch!")
                 exit(-1)
             exit(f"Boot failed with code {repr(msg)}")
 
