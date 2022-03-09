@@ -6,7 +6,7 @@
 __attribute__((section(".data"))) void current_hash(uint8_t* out, uint8_t* start, uint32_t size) {
     SHA256_CTX ctx;
     sha256_init(&ctx);
-    sha256_update(&ctx, 0x5800, (uint32_t)start - 0x5800);
+    sha256_update(&ctx, (uint8_t*)0x5800, (uint32_t)start - 0x5800);
     sha256_update(&ctx, start + size, 0x40000 - (uint32_t)(start + size));
     sha256_final(&ctx, out);
 }

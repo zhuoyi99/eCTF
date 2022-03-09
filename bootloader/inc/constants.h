@@ -41,15 +41,17 @@
 #define FIRMWARE_MAX_SIZE       0x4000
 #define CONFIGURATION_MAX_SIZE  0x10000
 
+#define EEPROM_BLOCK 64
+
 // Digital signature related
 #define ED_SIGNATURE_SIZE 64
 // Location of public key on EEPROM
 #define ED_PUBLIC_KEY_LOCATION 0
-#define DEFAULT_VERSION_SIGNATURE_LOCATION 128
+#define DEFAULT_VERSION_SIGNATURE_LOCATION 1*EEPROM_BLOCK
 
 // Location of Encryption/Decryption key on EEPROM
-#define ED_ENCRYPTION_KEY_LOCATION 3
-#define ED_ENCRYPTION_IV_LOCATION 4
+#define ED_ENCRYPTION_KEY_LOCATION 2*EEPROM_BLOCK
+#define ED_ENCRYPTION_IV_LOCATION 3*EEPROM_BLOCK
 
 // Firmware update constants
 #define FRAME_OK 0x00

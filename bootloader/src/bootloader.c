@@ -151,7 +151,7 @@ void handle_readback(void)
     }
     
     // Read out size
-    uart_write(HOST_UART, &size, sizeof(size));
+    uart_write(HOST_UART, (uint8_t*)&size, sizeof(size));
 
     // Read out signature
     uart_write(HOST_UART, signature, ED_SIGNATURE_SIZE);
