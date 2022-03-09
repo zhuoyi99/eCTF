@@ -14,10 +14,11 @@
 import argparse
 import json
 import logging
-from ssl import _Cipher
+# from ssl import _Cipher
 from cryptography.hazmat.primitives.ciphers import algorithms, modes, Cipher
 from cryptography.hazmat.backends import default_backend
 from pathlib import Path
+import os
 
 from util import print_banner, FIRMWARE_ROOT, LOG_FORMAT, sign
 
@@ -34,23 +35,24 @@ def protect_firmware(
     log.info("Reading the firmware...")
     firmware_data = firmware_file.read_bytes()
 
+    key_file = Path("/secrets/encryption_key.bin")
+    key = key_file.read_bytes()[:32]
+    iv = os.urandom(16)
+    # Pad before signing
+    padding = 32 + (32 -len(firmware_data)%32)
+    firmware_data+=b"\x00"*padding
+
     log.info("Signing...")
     signature = sign(firmware_data)
-    version_signature = sign(version.to_bytes(4, byteorder="little"))
+    version_and_iv_signature = sign(version.to_bytes(4, byteorder="little") + iv)
     log.info(f"FW Signature: {signature.hex()}")
-    log.info(f"Version Signature: {version_signature.hex()}")
+    log.info(f"Version+IV Signature: {version_and_iv_signature.hex()}")
 
 
     log.info("Encrypting...")
-    key_file = Path("/secrets/encryption_key.bin")
-    iv_file = Path("/secrets/encryption_iv.bin")
-    key = key_file.read_bytes()[:32]
-    iv = iv_file.read_bytes()[:16]
-    print("KEY = ", key.hex())
-    print("IV = ", iv.hex())
+    # log.info(f"KEY = {key.hex()}")
+    log.info(f"IV = {iv.hex()}")
     cipher = Cipher(algorithms.AES(key), modes.CBC(iv), default_backend())
-    padding = 32 + (32 -len(firmware_data)%32)
-    firmware_data+="\x00"*padding
     encryptor = cipher.encryptor()
     enc_fw = encryptor.update(firmware_data) + encryptor.finalize()
     log.info("Packaging the firmware...")
@@ -65,9 +67,10 @@ def protect_firmware(
     data = {
         "firmware_size": firmware_size,
         "version_num": version,
-        "version_signature": version_signature.hex(),
+        "version_and_iv_signature": version_and_iv_signature.hex(),
         "release_msg": release_message,
         "firmware": enc_fw.hex(), # encrypted firmware
+        "iv": iv.hex(),
         "signature": signature.hex(),
     }
 

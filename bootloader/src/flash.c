@@ -208,7 +208,7 @@ __attribute__((section(".data"))) void load_data_unsafe(uint32_t interface, uint
 /**
  * @brief Trusted part of firmware load.
  */
-__attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uint8_t* fw_signature, uint8_t* version_signature, uint32_t size, uint32_t rel_msg_size) {
+__attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uint8_t* fw_signature, uint8_t* iv, uint8_t* version_signature, uint32_t size, uint32_t rel_msg_size) {
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];
 
@@ -219,7 +219,6 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
     current_hash(hash, (uint8_t*)FIRMWARE_BASE_PTR, padded_size);
 
     // Clear signature page
-    // TODO: What about other signatures if they go in the same page?
     flash_erase_page_unsafe(FIRMWARE_SIGNATURE_PTR);
 
     // Clear firmware metadata
@@ -230,6 +229,9 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
 
     // Save version signature
     flash_write_unsafe((uint32_t*)version_signature, FIRMWARE_V_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
+
+    // Save IV (4 words, 16 bytes)
+    flash_write_unsafe((uint32_t*)iv, FIRMWARE_IV_PTR, 4);
 
     // Write release message
     uint8_t *rel_msg_read_ptr = rel_msg;

@@ -16,6 +16,9 @@ import logging
 import socket
 from pathlib import Path
 
+from cryptography.hazmat.primitives.ciphers import algorithms, modes, Cipher
+from cryptography.hazmat.backends import default_backend
+
 from util import print_banner, LOG_FORMAT, integrity_challenge, verify
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
@@ -64,18 +67,18 @@ def readback(socket_number, region, num_bytes):
             return
 
         # We don't send the number of bytes to read, we read the whole section and verify it / decrypt on our side
-        bytes_remaining = 4 + 64 
-        num_bytes_and_sig = b""
+        # Read out size + signature + IV
+        bytes_remaining = 4 + 64 + 16
+        num_bytes_and_sig_and_iv = b""
         while bytes_remaining > 0:
             data = sock.recv(num_bytes)
             num_received = len(data)
-            num_bytes_and_sig += data
+            num_bytes_and_sig_and_iv += data
             bytes_remaining -= num_received
 
-        num_bytes_read = int.from_bytes(num_bytes_and_sig[:4], byteorder="little")
-        signature = num_bytes_and_sig[4:]
-
-        # TODO recieve AES IV
+        num_bytes_read = int.from_bytes(num_bytes_and_sig_and_iv[:4], byteorder="little")
+        signature = num_bytes_and_sig_and_iv[4:68]
+        iv = num_bytes_and_sig_and_iv[68:]
 
         # Notify ready for firmware data
         sock.send(b"R")
@@ -91,7 +94,12 @@ def readback(socket_number, region, num_bytes):
             fw += data
             bytes_remaining -= num_received
 
-        # TODO decrypt
+        if region == "firmware":
+            key_file = Path("/secrets/encryption_key.bin")
+            key = key_file.read_bytes()[:32]
+            cipher = Cipher(algorithms.AES(key), modes.CBC(iv), default_backend())
+            decryptor = cipher.decryptor()
+            fw = decryptor.update(fw) + decryptor.finalize()
 
         if not verify(fw, signature):
             log.error("Failed to verify signature of readback data!");

@@ -41,7 +41,6 @@ RUN cat /secrets/ed_public_key.bin > /bootloader/eeprom.bin
 #RUN cat /secrets/aes_key_bootloader.bin >> /bootloader/eeprom.bin
 RUN cat /secrets/default_ver_signature.bin >> /bootloader/eeprom.bin
 RUN cat /secrets/encryption_key.bin >> /bootloader/eeprom.bin
-RUN cat /secrets/encryption_iv.bin >> /bootloader/eeprom.bin
 
 
 # Compile bootloader

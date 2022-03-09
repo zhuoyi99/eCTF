@@ -8,6 +8,7 @@
  *      Reserved:0x0002B000 : 0x0002B300 (768B)
  *      FW Sig:  0x0002B300 : 0x0002B340 (64B, ED_SIGNATURE_SIZE)
  *      Ver Sig: 0x0002B340 : 0x0002B380 (64B, ED_SIGNATURE_SIZE)
+ *      IV:      0x0002B380 : 0x0002B390 (16B)
  *      Padding: 0x0002B380 : 0x0002B400
  *      Size:    0x0002B400 : 0x0002B404 (4B)
  *      Version: 0x0002B404 : 0x0002B408 (4B)
@@ -16,12 +17,14 @@
  * Configuration:
  *      Size:    0x0002FC00 : 0x0002FC40 (1KB = 4B + 60B of padding)
  *      Sig:     0x0002FC40 : 0x0002FC80 (64B, ED_SIGNATURE_SIZE)
+ *      IV:      0x0002FC80 : 0x0002FC90 (16B)
  *      Padding: 0x0002FC80 : 0x00030000 (896B)
  *      Cfg:     0x00030000 : 0x00040000 (64KB)
  */
 #define FIRMWARE_BASE_PTR          ((uint32_t)(FLASH_START + 0x0002B000))
 #define FIRMWARE_SIGNATURE_PTR     ((uint32_t)(FLASH_START + 0x0002B300))
 #define FIRMWARE_V_SIGNATURE_PTR   ((uint32_t)(FLASH_START + 0x0002B340))
+#define FIRMWARE_IV_PTR            ((uint32_t)(FLASH_START + 0x0002B380))
 
 #define FIRMWARE_METADATA_PTR      ((uint32_t)(FLASH_START + 0x0002B400))
 #define FIRMWARE_SIZE_PTR          ((uint32_t)(FIRMWARE_METADATA_PTR + 0))
@@ -35,6 +38,7 @@
 #define CONFIGURATION_METADATA_PTR ((uint32_t)(FIRMWARE_STORAGE_PTR + (FLASH_PAGE_SIZE*16)))
 #define CONFIGURATION_SIZE_PTR     ((uint32_t)(CONFIGURATION_METADATA_PTR + 0))
 #define CONFIGURATION_SIG_PTR      ((uint32_t)(CONFIGURATION_METADATA_PTR + 0x40))
+#define CONFIGURATION_IV_PTR       ((uint32_t)(CONFIGURATION_METADATA_PTR + 0x80))
 #define CONFIGURATION_STORAGE_PTR  ((uint32_t)(CONFIGURATION_METADATA_PTR + FLASH_PAGE_SIZE))
 
 // Maximum sizes
@@ -51,7 +55,6 @@
 
 // Location of Encryption/Decryption key on EEPROM
 #define ED_ENCRYPTION_KEY_LOCATION 2*EEPROM_BLOCK
-#define ED_ENCRYPTION_IV_LOCATION 3*EEPROM_BLOCK
 
 // Firmware update constants
 #define FRAME_OK 0x00
