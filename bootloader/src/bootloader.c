@@ -26,6 +26,8 @@ char DUMMY_ENC_KEY[32] = {0x97,0xf1,0xe7,0x1a,0x7b,0xf9,0x69,0x94,0xb5,0x68,0x20
 #include "flash.h"
 #include "uart.h"
 
+#include "tinycrypt/aes.h"
+#include "tinycrypt/cbc_mode.h"
 // this will run if EXAMPLE_AES is defined in the Makefile (see line 54)
 #ifdef EXAMPLE_AES
 #include "aes.h"
@@ -38,10 +40,23 @@ unsigned char ED_PUBLIC_KEY[32];
 // Helper to verify signatures
 #define signature_verify(signature, storage, size) ed25519_verify(signature, storage, size, ED_PUBLIC_KEY)
 
+// KEY, IV and schedule struct for firmware decryption
+unsigned char ENC_KEY[32];
+unsigned char ENC_IV[16];
+struct tc_aes_key_sched_struct sched;
+
 // SHA512 from the ED25519 library
 #include "sha512.h"
 
 // Storage layout
+
+/*
+    Decrypt Fimrware/configuration before boot/update
+*/
+void Decrypt(uint8_t * out, const uint8_t * in, unsigned int len)
+{
+    tc_cbc_mode_decrypt(out, len, in, len, ENC_IV, &sched);
+}
 
 /**
  * @brief Boot the firmware.
@@ -58,9 +73,11 @@ void handle_boot(void)
     // Find the metadata
     size = *((uint32_t *)FIRMWARE_SIZE_PTR);
 
+    uint8_t fbuf[size];
+    Decrypt(fbuf, (uint8_t*)(FIRMWARE_STORAGE_PTR), size);
     // Copy the firmware into the Boot RAM section
     for (i = 0; i < size; i++) {
-        *((uint8_t *)(FIRMWARE_BOOT_PTR + i)) = *((uint8_t *)(FIRMWARE_STORAGE_PTR + i));
+        *((uint8_t *)(FIRMWARE_BOOT_PTR + i)) = fbuf[i];
     }
 
     // Probably not needed, but verify signature of version
@@ -70,13 +87,13 @@ void handle_boot(void)
     }
 
     // Verify firmware signature
-    if(!signature_verify((uint8_t*)FIRMWARE_SIGNATURE_PTR, (uint8_t*)FIRMWARE_STORAGE_PTR, size)) {
+    if(!signature_verify((uint8_t*)FIRMWARE_SIGNATURE_PTR, fbuf, size)) {
         uart_writeb(HOST_UART, 'S');
         return;
     }
 
     // TODO Decrypt configuration in-place
-
+    
     // Verify configuration signature
     if(!signature_verify((uint8_t*)CONFIGURATION_SIG_PTR, (uint8_t*)CONFIGURATION_STORAGE_PTR, *(uint32_t*)CONFIGURATION_SIZE_PTR)) {
         uart_writeb(HOST_UART, 'S');
@@ -139,7 +156,6 @@ void handle_readback(void)
     // Read out signature
     uart_write(HOST_UART, signature, ED_SIGNATURE_SIZE);
     
-    // TODO Read out IV
     
     // Wait for host to be ready
     uart_readb(HOST_UART);
@@ -333,6 +349,12 @@ int main(void) {
 
     // Read signature public key from EEPROM - this block cannot be hidden
     EEPROMRead((uint32_t*)&ED_PUBLIC_KEY, ED_PUBLIC_KEY_LOCATION, 32);
+    EEPROMRead((uint32_t*)&ENC_KEY, ED_ENCRYPTION_KEY_LOCATION, 32);
+    EEPROMRead((uint32_t*)&ENC_IV, ED_ENCRYPTION_IV_LOCATION, 16);
+
+    // Set up the decryption key
+
+    tc_aes128_set_decrypt_key(&sched, ENC_KEY);
 
     { // Anonymous block
         uint8_t default_version_signature[ED_SIGNATURE_SIZE];
