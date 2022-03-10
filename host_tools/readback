@@ -16,6 +16,7 @@ import logging
 import socket
 from pathlib import Path
 
+import hashlib
 from cryptography.hazmat.primitives.ciphers import algorithms, modes, Cipher
 from cryptography.hazmat.backends import default_backend
 
@@ -24,10 +25,19 @@ from util import print_banner, LOG_FORMAT, integrity_challenge, verify
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(Path(__file__).name)
 
+RESP_OK = b"\x00"
+RESP_BAD = b"\x01"
+KEY_PATH = Path('/secrets/auth_key.bin')
 
 def readback(socket_number, region, num_bytes):
     # Print Banner
     print_banner("SAFFIRe Memory Readback Tool")
+
+    # Pre-authentication check
+    # a nice, non-malicious host would hold itself accountable if it doesn't have the secret
+    if not KEY_PATH.exists():
+        log.info(f'Host tools does not have /secrets/auth_key.bin: readback terminated')
+        return 
 
     # Connect to the bootoader
     log.info("Connecting socket...")
@@ -39,6 +49,11 @@ def readback(socket_number, region, num_bytes):
         # Send readback command
         log.info("Sending readback command...")
         sock.send(b"R")
+
+        # CHAP Authentication
+        if not auth(sock):
+            log.info('Authentication failed: readback terminated')
+            return
 
         # Receive bootloader acknowledgement
         log.info("Waiting for bootloader to enter readback mode...")
@@ -67,8 +82,8 @@ def readback(socket_number, region, num_bytes):
             return
 
         # We don't send the number of bytes to read, we read the whole section and verify it / decrypt on our side
-        # Read out size + signature + IV
-        bytes_remaining = 4 + 64 + 16
+        # Read out size + version + signature + IV
+        bytes_remaining = 4 + 64 + 20
         num_bytes_and_sig_and_iv = b""
         while bytes_remaining > 0:
             data = sock.recv(num_bytes)
@@ -78,11 +93,9 @@ def readback(socket_number, region, num_bytes):
 
         num_bytes_read = int.from_bytes(num_bytes_and_sig_and_iv[:4], byteorder="little")
         signature = num_bytes_and_sig_and_iv[4:68]
-        iv = num_bytes_and_sig_and_iv[68:]
-
+        iv = num_bytes_and_sig_and_iv[72:]
         # Notify ready for firmware data
         sock.send(b"R")
-
         # Receive firmware data
         log.info("Receiving firmware...")
         bytes_remaining = num_bytes_read
@@ -109,6 +122,46 @@ def readback(socket_number, region, num_bytes):
 
         print(f"Memory Readback Data: {fw[:num_bytes].hex()}\n")
 
+# host side authentication - response to challenge
+#    key created from host_tools/generate_secrets and located in the /secrets folder
+# return whether auth succeeded (True) or not
+def auth (sock: socket.socket):
+
+    CH_LEN = 32 # challenge is a SHA256 digest, 32B 
+    KEY_LEN = 32 # assume key length is 32 for now
+
+    log.info('[RB AUTHENTICATION] Starting authentication')
+
+    # receive challenge
+    # a single recv(CH_LEN) can possibly return < CH_LEN bytes, so the loop is necessary
+    challenge_host = recv_b = sock.recv(CH_LEN)
+    while len(challenge_host) != CH_LEN:
+        log.info(f'[RB AUTHENTICATION] Received {len(recv_b)} byte(s)')
+        recv_b = sock.recv(CH_LEN)
+        challenge_host += recv_b
+    log.info(f'[RB AUTHENTICATION] Received all bytes')
+    log.info(f'[RB AUTHENTICATION] Received challenge {hex(int.from_bytes(challenge_host, "little"))}')
+
+    # find symmetric key
+    key = KEY_PATH.read_bytes()[:KEY_LEN]
+
+    # Compute challenge hash
+    m = hashlib.sha256()
+    m.update(challenge_host + key)
+    host_ans = m.digest()
+
+    # send challenge response
+    log.info(f'[RB AUTHENTICATION] Sending response {hex(int.from_bytes(host_ans, "little"))}')
+    sock.sendall(host_ans)
+
+    # wait for verification
+    host_verify = sock.recv(1)
+    if host_verify != RESP_OK:
+        log.info(f'[RB AUTHENTICATION] Host tools not authenticated')
+        return False
+    else:
+        log.info(f'[RB AUTHENTICATION] Host tools authenticated')
+        return True
 
 def main():
     parser = argparse.ArgumentParser()

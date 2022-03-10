@@ -44,7 +44,9 @@ struct AES_ctx ctx;
 // SHA512 from the ED25519 library
 #include "sha512.h"
 
-// Storage layout
+// Authentication uses SHA256
+#include "sha256.h" // same sha256 include as flash_trampoline.h
+// not including tinycrypt bc it causes weird problems with flash
 
 /*
     Decrypt Fimrware/configuration before boot/update
@@ -57,6 +59,77 @@ void Decrypt(uint8_t * out, const uint8_t * in, const uint8_t* iv, unsigned int 
         *((uint32_t*)out + i) = *((uint32_t*)in + i);
     }
     AES_CBC_decrypt_buffer(&ctx, out, len);
+}
+
+void inc_counter (uint8_t *counter) {
+    uint8_t *loc = counter + AUTH_CTR_LEN - 1;
+    while (loc != counter - 1) {
+	(*loc)++;
+	if (*loc != 0x0) {
+            break;
+	}
+        --loc;
+    }
+
+    EEPROMProgram((uint32_t *) counter, AUTH_CTR, AUTH_CTR_LEN);
+}
+
+/**
+ * @brief Device side authentication, issue challenge, validate response, respond to challenge
+ * 
+ * @return true if mutual authentication succeeded, false if some step failed
+ */
+// bool auth (uint8_t *counter, uint8_t *seed) {
+bool auth (void) {
+    // secrets should be created with generate_secrets in host_tools (for the host computer) 
+    //     and with Dockerfile 1 (for the bootloader) (use bootloader/eeprom.bin, which gets used in Dockerfile 2) 
+
+    // create random 32B value by basically doing challenge = SHA(counter + seed); counter++;
+    uint8_t counter[AUTH_CTR_LEN];
+    uint8_t seed[AUTH_SEED_LEN];
+    EEPROMRead((uint32_t *) counter, AUTH_CTR, AUTH_CTR_LEN);
+    EEPROMRead((uint32_t *) seed, AUTH_SEED, AUTH_SEED_LEN);
+    
+    uint8_t challenge[AUTH_CH_LEN]; 
+    SHA256_CTX chal_ctx;
+    sha256_init(&chal_ctx);
+    sha256_update(&chal_ctx, counter, AUTH_CTR_LEN);
+    sha256_update(&chal_ctx, seed, AUTH_SEED_LEN);
+    sha256_final(&chal_ctx, challenge);
+    inc_counter(counter);
+
+    // get symmetric key from EEPROM
+    uint8_t sym_key[AUTH_KEY_LEN];
+    // 2nd arg = address, 3rd arg = number bytes; both must be multiples of 4
+    EEPROMRead((uint32_t *) sym_key, AUTH_KEY, AUTH_KEY_LEN);
+
+    // issue challenge
+    uart_write(HOST_UART, challenge, AUTH_CH_LEN);
+
+    // compute expected digest, basically SHA256(challenge + key) 
+    uint8_t expected_digest[AUTH_DIGEST_LEN];
+    SHA256_CTX auth_ctx;
+    sha256_init(&auth_ctx);
+    sha256_update(&auth_ctx, challenge, AUTH_CH_LEN);
+    sha256_update(&auth_ctx, sym_key, AUTH_KEY_LEN);
+    sha256_final(&auth_ctx, expected_digest);
+
+    // receive challenge response, SHA256 digest is 256b = 32B
+    uint8_t host_ans[AUTH_DIGEST_LEN];
+    uart_read(HOST_UART, host_ans, AUTH_DIGEST_LEN);
+
+    // verify response byte-by-byte
+    uint32_t index;
+    for (index = 0; index < AUTH_DIGEST_LEN; ++index) {
+        if (expected_digest[index] != host_ans[index]) {
+            uart_writeb(HOST_UART, FRAME_BAD);
+            return false;
+        }   
+    }
+
+    // send authentication OK to host_tools 
+    uart_writeb(HOST_UART, FRAME_OK);
+    return true;
 }
 
 /**
@@ -166,7 +239,7 @@ void handle_readback(void)
     uart_write(HOST_UART, signature, ED_SIGNATURE_SIZE);
     
     // Read out signed ver, IV
-    uart_write(HOST_UART, iv, 16);
+    uart_write(HOST_UART, iv, 20);
     
     // Wait for host to be ready
     uart_readb(HOST_UART);
@@ -384,7 +457,10 @@ int main(void) {
             handle_update();
             break;
         case 'R':
-            handle_readback();
+            // CHAP Authentication
+	    if (auth()) {
+                handle_readback();
+            }
             break;
         case 'B':
             handle_boot();

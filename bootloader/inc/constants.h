@@ -56,6 +56,18 @@
 // Location of Encryption/Decryption key on EEPROM
 #define ED_ENCRYPTION_KEY_LOCATION 2*EEPROM_BLOCK
 
+// Authentication constants
+#define AUTH_KEY_LEN 32           // assume 32 byte key
+#define AUTH_CH_LEN 32            // challenge is a 32B SHA256 digest 
+#define AUTH_DIGEST_LEN 32        // SHA256 
+#define AUTH_CTR_LEN 32 
+#define AUTH_SEED_LEN 64
+
+#define AUTH_EEPROM_BLOCK (3 * EEPROM_BLOCK) // base addr for 64B auth block
+#define AUTH_KEY (AUTH_EEPROM_BLOCK + 0x0)
+#define AUTH_CTR (AUTH_EEPROM_BLOCK + AUTH_KEY_LEN)
+#define AUTH_SEED (4 * EEPROM_BLOCK)
+
 // Firmware update constants
 #define FRAME_OK 0x00
 #define FRAME_BAD 0x01
