@@ -166,7 +166,7 @@ void handle_readback(void)
     uart_write(HOST_UART, signature, ED_SIGNATURE_SIZE);
     
     // Read out signed ver, IV
-    uart_write(HOST_UART, iv, 16);
+    uart_write(HOST_UART, iv, 20);
     
     // Wait for host to be ready
     uart_readb(HOST_UART);

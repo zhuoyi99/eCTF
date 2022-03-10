@@ -78,11 +78,9 @@ def readback(socket_number, region, num_bytes):
 
         num_bytes_read = int.from_bytes(num_bytes_and_sig_and_iv[:4], byteorder="little")
         signature = num_bytes_and_sig_and_iv[4:68]
-        iv = num_bytes_and_sig_and_iv[68:]
-
+        iv = num_bytes_and_sig_and_iv[72:]
         # Notify ready for firmware data
         sock.send(b"R")
-
         # Receive firmware data
         log.info("Receiving firmware...")
         bytes_remaining = num_bytes_read
