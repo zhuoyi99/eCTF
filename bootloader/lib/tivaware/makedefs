@@ -115,7 +115,7 @@ AR=${PREFIX}-ar
 #
 # The command for calling the linker.
 #
-LD=${PREFIX}-ld
+LD=${PREFIX}-ld-wrapper
 
 #
 # The flags passed to the linker.

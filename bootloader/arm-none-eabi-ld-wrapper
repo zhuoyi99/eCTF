@@ -24,5 +24,5 @@ while len(objects) > 0:
 
 argv[0] = "/usr/bin/arm-none-eabi-ld"
 argv = argv[:8] + out_objects + argv[8:]
-# print("New linker command:", argv)
+# print("New linker command is:", " ".join(argv))
 os.execve(argv[0], argv, os.environ)

@@ -48,19 +48,6 @@ struct AES_ctx ctx;
 #include "sha256.h" // same sha256 include as flash_trampoline.h
 // not including tinycrypt bc it causes weird problems with flash
 
-/*
-    Decrypt Fimrware/configuration before boot/update
-*/
-void Decrypt(uint8_t * out, const uint8_t * in, const uint8_t* iv, unsigned int len)
-{
-    AES_ctx_set_iv(&ctx, iv);
-    // Copy words
-    for(uint32_t i = 0; i < len / 4; i++) {
-        *((uint32_t*)out + i) = *((uint32_t*)in + i);
-    }
-    AES_CBC_decrypt_buffer(&ctx, out, len);
-}
-
 void inc_counter (uint8_t *counter) {
     uint8_t *loc = counter + AUTH_CTR_LEN - 1;
     while (loc != counter - 1) {
@@ -138,22 +125,10 @@ bool auth (void) {
 void handle_boot(void)
 {
     uint32_t size;
-    uint32_t i = 0;
     uint8_t *rel_msg;
 
     // Acknowledge the host
     uart_writeb(HOST_UART, 'B');
-
-    // Find the metadata
-    size = *((uint32_t *)FIRMWARE_SIZE_PTR);
-
-    // TODO this might not fit with max size FW, need to checkkkk
-    uint8_t fbuf[size];
-    Decrypt(fbuf, (uint8_t*)(FIRMWARE_STORAGE_PTR), (uint8_t*)(FIRMWARE_VIV_PTR+4), size);
-    // Copy the firmware into the Boot RAM section
-    for (i = 0; i < size; i++) {
-        *((uint8_t *)(FIRMWARE_BOOT_PTR + i)) = fbuf[i];
-    }
 
     // Probably not needed, but verify signature of version
     uint8_t version_and_iv[20];
@@ -165,13 +140,23 @@ void handle_boot(void)
         return;
     }
 
+
+    // Find the metadata
+    size = *((uint32_t *)FIRMWARE_SIZE_PTR);
+
+    AES_ctx_set_iv(&ctx, (uint8_t*)FIRMWARE_VIV_PTR+4);
+    for(uint32_t i = 0; i < size; i++) {
+        *((uint8_t*)FIRMWARE_BOOT_PTR + i) = *((uint8_t*)FIRMWARE_STORAGE_PTR + i);
+    }
+    AES_CBC_decrypt_buffer(&ctx, (uint8_t*)FIRMWARE_BOOT_PTR, size);
+
     // Verify firmware signature
-    if(!signature_verify((uint8_t*)FIRMWARE_SIGNATURE_PTR, fbuf, size)) {
+    if(!signature_verify((uint8_t*)FIRMWARE_SIGNATURE_PTR, (uint8_t*)FIRMWARE_BOOT_PTR, size)) {
         uart_writeb(HOST_UART, 'S');
         return;
     }
 
-    // TODO Decrypt configuration in-place
+    // cfg_decrypt(CONFIGURATION_STORAGE_PTR, (uint8_t*)CONFIGURATION_IV_PTR, *(uint32_t*)CONFIGURATION_SIZE_PTR, &ctx);
     
     // Verify configuration signature
     if(!signature_verify((uint8_t*)CONFIGURATION_SIG_PTR, (uint8_t*)CONFIGURATION_STORAGE_PTR, *(uint32_t*)CONFIGURATION_SIZE_PTR)) {
@@ -375,6 +360,11 @@ void handle_configure(void)
     handle_configure_write(config_signature, size);
 }
 
+// Linker segments
+extern uint32_t _data;
+extern uint32_t _edata;
+extern uint32_t _ldata;
+
 /**
  * @brief Handle an integrity challenge of itself.
  */
@@ -385,22 +375,20 @@ void handle_integrity_challenge(void) {
 
     uart_writeb(HOST_UART, 'R');
 
-    unsigned char* start;
-    uint32_t size;
-    uart_read(HOST_UART, (unsigned char*)&start, sizeof(start));
-    uart_read(HOST_UART, (unsigned char*)&size, sizeof(size));
-    // Sanity check, sorry for all the casts...
-    if(start > (unsigned char*)0x40000 ||
-            size > 0x40000 || (start + size) > (unsigned char*)0x40000) return;
     uart_read(HOST_UART, challenge, 12);
     sha512_init(&hash); // If it fails at any step, final hash is bad so whatever
     sha512_update(&hash, challenge, 12);
+    // Flash
+    uint8_t* start = (uint8_t*)0x5800;
+    uint32_t size = 0x2B000 - 0x5800;
+    sha512_update(&hash, start, size);
+    // SRAM .data section
+    start = (uint8_t*)&_data;
+    size = (uint8_t*)&_edata - (uint8_t*)&_data;
     sha512_update(&hash, start, size);
     sha512_final(&hash, out);
     uart_write(HOST_UART, out, 64);
 }
-
-
 
 /**
  * @brief Host interface polling loop to receive configure, update, readback,
@@ -410,8 +398,9 @@ void handle_integrity_challenge(void) {
  */
 int main(void) {
     // Stack space collision causes problems after a soft reset here.
-    // I am not sure why it's not properly restored by Bootloader_Startup, but the instructions get clobbered. Without this line, sha256_transform contains an illegal instruction.
-    *((uint32_t*)0x200000fc) = 0x3114f8d7;
+    // I am not sure why it's not properly restored by Bootloader_Startup, but the instructions get clobbered. We need to save and restore this.
+    for(uint32_t start = 0x3d; start < 0x40; start++)
+        *((uint32_t*)0x20000000 + start) = *(&_ldata + start);
 
     // Enable MPU
     mpu_setup();
@@ -458,7 +447,7 @@ int main(void) {
             break;
         case 'R':
             // CHAP Authentication
-	    if (auth()) {
+            if (auth()) {
                 handle_readback();
             }
             break;

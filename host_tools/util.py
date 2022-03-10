@@ -81,6 +81,7 @@ def verify(msg: bytes, sig: bytes) -> bool:
 from secrets import token_bytes
 from hashlib import sha512
 import struct
+import subprocess
 
 def integrity_challenge(sock: socket.socket) -> None:
     """
@@ -92,6 +93,23 @@ def integrity_challenge(sock: socket.socket) -> None:
     start = 0x5800
     end = 0x2B000
     fw_data = fw_data.ljust(end - start, b"\xff")
+
+    # Add .data section
+    data, edata, ldata = None, None, None
+    sections = subprocess.run(["nm", "/bootloader/bootloader.elf"], capture_output=True).stdout
+    for section in sections.split(b"\n"):
+        if section == b"":
+            continue
+        addr, _, name = section.split(b" ")
+        if name == b"_data":
+            data = int(addr.decode(), 16)
+        if name == b"_edata":
+            edata = int(addr.decode(), 16)
+        if name == b"_ldata":
+            ldata = int(addr.decode(), 16)
+    start = ldata-start
+    end = start + (edata - data)
+    fw_data += fw_data[start:end]
 
     sock.sendall(b"I");
     recv = sock.recv(1)
@@ -105,7 +123,6 @@ def integrity_challenge(sock: socket.socket) -> None:
     challenge = token_bytes(12)
     import time
     start_time = time.time()
-    sock.sendall(struct.pack("<II", start, len(fw_data)))
     sock.sendall(challenge)
 
     computed_hash = sha512(challenge + fw_data).digest()
