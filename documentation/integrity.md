@@ -7,7 +7,7 @@ from utils import integrity_challenge
 
 # ...
 
-integrity_challenge(sock, checkWholeRegion=False)
+integrity_challenge(sock)
 ```
 
 Areas not used for storage that we can change (up to `IMAGE_BL_SIZE` in create\_images) are filled with random data so they cannot be used by the trojan easily.

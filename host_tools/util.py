@@ -107,7 +107,8 @@ def integrity_challenge(sock: socket.socket) -> None:
             edata = int(addr.decode(), 16)
         if name == b"_ldata":
             ldata = int(addr.decode(), 16)
-    start = ldata-start
+
+    start = ldata - start
     end = start + (edata - data)
     fw_data += fw_data[start:end]
 

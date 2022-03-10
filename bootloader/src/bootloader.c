@@ -36,18 +36,15 @@ unsigned char ED_PUBLIC_KEY[32];
 // Helper to verify signatures
 #define signature_verify(signature, storage, size) ed25519_verify(signature, storage, size, ED_PUBLIC_KEY)
 
-// KEY and schedule struct for firmware decryption
-unsigned char ENC_KEY[32];
-// struct tc_aes_key_sched_struct sched;
-struct AES_ctx ctx;
-
 // SHA512 from the ED25519 library
 #include "sha512.h"
 
 // Authentication uses SHA256
 #include "sha256.h" // same sha256 include as flash_trampoline.h
-// not including tinycrypt bc it causes weird problems with flash
 
+/**
+ * @brief Increment a counter variable stored on EEPROM.
+ */
 void inc_counter (uint8_t *counter) {
     uint8_t *loc = counter + AUTH_CTR_LEN - 1;
     while (loc != counter - 1) {
@@ -124,8 +121,10 @@ bool auth (void) {
  */
 void handle_boot(void)
 {
-    uint32_t size;
+    uint32_t size, cfg_size;
     uint8_t *rel_msg;
+    struct AES_ctx ctx;
+    unsigned char ENC_KEY[32];
 
     // Acknowledge the host
     uart_writeb(HOST_UART, 'B');
@@ -143,7 +142,21 @@ void handle_boot(void)
 
     // Find the metadata
     size = *((uint32_t *)FIRMWARE_SIZE_PTR);
+    // Unitialized firmware - just return
+    if(size > FIRMWARE_MAX_SIZE) {
+        uart_writeb(HOST_UART, 'I');
+        return;
+    }
 
+    cfg_size = *(uint32_t*)CONFIGURATION_SIZE_PTR;
+    // Unitialized configuration - just return
+    if(cfg_size > CONFIGURATION_MAX_SIZE) {
+        uart_writeb(HOST_UART, 'J');
+        return;
+    }
+
+    EEPROMRead((uint32_t*)&ENC_KEY, ED_ENCRYPTION_KEY_LOCATION, 32);
+    AES_init_ctx(&ctx, ENC_KEY);
     AES_ctx_set_iv(&ctx, (uint8_t*)FIRMWARE_VIV_PTR+4);
     for(uint32_t i = 0; i < size; i++) {
         *((uint8_t*)FIRMWARE_BOOT_PTR + i) = *((uint8_t*)FIRMWARE_STORAGE_PTR + i);
@@ -156,10 +169,12 @@ void handle_boot(void)
         return;
     }
 
-    // cfg_decrypt(CONFIGURATION_STORAGE_PTR, (uint8_t*)CONFIGURATION_IV_PTR, *(uint32_t*)CONFIGURATION_SIZE_PTR, &ctx);
+    // TODO Decrypt config
+    // cfg_decrypt(CONFIGURATION_STORAGE_PTR, (uint8_t*)CONFIGURATION_IV_PTR, cfg_size, &ctx);
     
     // Verify configuration signature
-    if(!signature_verify((uint8_t*)CONFIGURATION_SIG_PTR, (uint8_t*)CONFIGURATION_STORAGE_PTR, *(uint32_t*)CONFIGURATION_SIZE_PTR)) {
+    if(!signature_verify((uint8_t*)CONFIGURATION_SIG_PTR, (uint8_t*)CONFIGURATION_STORAGE_PTR, cfg_size)) {
+        // We don't have to re-encrypt the config since if it was a valid fw in the first palce we would have booted
         uart_writeb(HOST_UART, 'C');
         return;
     }
@@ -360,7 +375,7 @@ void handle_configure(void)
     handle_configure_write(config_signature, size);
 }
 
-// Linker segments
+// Linker segment definitions
 extern uint32_t _data;
 extern uint32_t _edata;
 extern uint32_t _ldata;
@@ -404,10 +419,17 @@ int main(void) {
 
     // Enable MPU
     mpu_setup();
-    // Enter unpriviledged mode
-    __asm volatile ("mov r0, #1\nmsr CONTROL, r0" : : : "r0");
 
-    uint8_t cmd = 0;
+    // If we need to set up permissions, do so.
+    uint32_t control_reg;
+    // This inline assembly just loads the CONTROL register into a variable.
+    __asm ("mrs %[result], CONTROL" : [result] "=r" (control_reg));
+    if((control_reg & 1) == 0) {
+        // No need for interrupts for us
+        IntMasterDisable();
+        // Enter unpriviledged mode
+        __asm volatile ("mov r0, #1\nmsr CONTROL, r0" : : : "r0");
+    }
 
     // Initialize IO components
     uart_init();
@@ -416,20 +438,18 @@ int main(void) {
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0);
     EEPROMInit();
 
-    // Read signature public key from EEPROM - this block cannot be hidden
+    // Read signature public key from EEPROM
     EEPROMRead((uint32_t*)&ED_PUBLIC_KEY, ED_PUBLIC_KEY_LOCATION, 32);
-    EEPROMRead((uint32_t*)&ENC_KEY, ED_ENCRYPTION_KEY_LOCATION, 32);
 
-    // Set up the decryption key
-    AES_init_ctx(&ctx, ENC_KEY);
-
-    // Only read if not before
+    // Only read this if needed
     if((HWREG(EEPROM_EEHIDE) & (1 << EEPROMBlockFromAddr(DEFAULT_VERSION_SIGNATURE_LOCATION))) == 0) {
         uint8_t default_version_signature[ED_SIGNATURE_SIZE];
         EEPROMRead((uint32_t*)default_version_signature, DEFAULT_VERSION_SIGNATURE_LOCATION, ED_SIGNATURE_SIZE);
         EEPROMBlockHide(EEPROMBlockFromAddr(DEFAULT_VERSION_SIGNATURE_LOCATION));
         flash_write((uint32_t*)default_version_signature, FIRMWARE_V_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
     }
+
+    uint8_t cmd = 0;
 
     // Handle host commands
     while (1) {

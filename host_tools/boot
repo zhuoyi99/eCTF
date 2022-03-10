@@ -53,6 +53,12 @@ def boot(socket_number: int, release_message_file: Path):
             if msg == b"C":
                 log.error(f"Boot failed due to configuration rsignature mismatch!")
                 exit(-1)
+            if msg == b"I":
+                log.error(f"Boot failed due to uninitialized firmware.")
+                exit(1)
+            if msg == b"J":
+                log.error(f"Boot failed due to uninitialized configuration.")
+                exit(1)
             exit(f"Boot failed with code {repr(msg)}")
 
         # Receive release message
