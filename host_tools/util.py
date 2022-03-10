@@ -126,15 +126,15 @@ def integrity_challenge(sock: socket.socket) -> None:
     sock.sendall(challenge)
 
     computed_hash = sha512(challenge + fw_data).digest()
-    log.info(f"[INTEGRITY CHECK] Challenge: {challenge.hex()}")
-    log.info(f"[INTEGRITY CHECK] Computed:  {computed_hash.hex()}")
+    log.info(f"[INTEGRITY CHECK] Challenge: {challenge.hex()[:16]}...")
+    log.info(f"[INTEGRITY CHECK] Computed:  {computed_hash.hex()[:16]}...")
 
     recv = b""
     while len(recv) != 512//8:
         recv_chunk = sock.recv(512//8 - len(recv))
         if recv_chunk == b"": break # Forcefully in case of closed
         recv += recv_chunk
-    log.info(f"[INTEGRITY CHECK] Recieved:  {recv.hex()}")
+    log.info(f"[INTEGRITY CHECK] Recieved:  {recv.hex()[:16]}...")
     log.info(f"[INTEGRITY CHECK] Time: {time.time() - start_time} sec")
 
     if recv != computed_hash:
