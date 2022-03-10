@@ -413,9 +413,10 @@ void handle_integrity_challenge(void) {
  */
 int main(void) {
     // Stack space collision causes problems after a soft reset here.
-    // I am not sure why it's not properly restored by Bootloader_Startup, but the instructions get clobbered. We need to save and restore this.
-    for(uint32_t start = 0x3d; start < 0x40; start++)
-        *((uint32_t*)0x20000000 + start) = *(&_ldata + start);
+    // I am not sure why it's not properly restored by Bootloader_Startup, but the instructions get clobbered - likely a bug with the stack after resets. We get to do this ourselves.
+    uint32_t* source = &_ldata;
+    for(uint32_t* start = &_data; start < &_edata;)
+        *start++ = *source++;
 
     // Enable MPU
     mpu_setup();

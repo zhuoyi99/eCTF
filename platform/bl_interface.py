@@ -169,6 +169,17 @@ def poll_restart_socks(device_sock: Sock, host_sock: Sock):
                 device_sock.send_msg(msg)
 
 
+def poll_sc_socks(device_sock: Sock, host_sock: Sock):
+    # First check that device opened a side-channel port
+    if device_sock.active():
+        msg = device_sock.read_msg()
+
+        # Send data to host
+        if host_sock.active():
+            if msg is not None:
+                host_sock.send_msg(msg)
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -193,7 +204,17 @@ def parse_args():
         "--restart-host-sock",
         type=Path,
         required=True,
-        help="Path to device-side data socket (will be created)",
+        help="Path to host-side data socket (will be created)",
+    )
+    parser.add_argument(
+        "--sc-bl-sock",
+        type=Path,
+        help="Path to the device-side side-channel socket (will be created)",
+    )
+    parser.add_argument(
+        "--sc-host-sock",
+        type=Path,
+        help="Path to the host-side side-channel socket (will be created)",
     )
     return parser.parse_args()
 
@@ -207,6 +228,9 @@ def main():
 
     restart_bl = Sock(str(args.restart_bl_sock), mode=0o777)
     restart_host = Sock(str(args.restart_host_sock), mode=0o777)
+
+    sc_bl = Sock(str(args.sc_bl_sock), mode=0o777)
+    sc_host = Sock(str(args.sc_host_sock), mode=0o777)
 
     # poll sockets forever
     while True:
