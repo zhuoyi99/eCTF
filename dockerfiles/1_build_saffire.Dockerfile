@@ -32,6 +32,9 @@ RUN mkdir /secrets
 ADD host_tools/ /host_tools
 ADD bootloader /bl_build
 
+# Copy linker wrapper
+RUN cp /bl_build/arm-none-eabi-ld-wrapper /bin/arm-none-eabi-ld-wrapper
+
 # Generate Secrets
 RUN python3 /host_tools/generate_secrets
 
@@ -41,7 +44,6 @@ RUN cat /secrets/ed_public_key.bin > /bootloader/eeprom.bin
 #RUN cat /secrets/aes_key_bootloader.bin >> /bootloader/eeprom.bin
 RUN cat /secrets/default_ver_signature.bin >> /bootloader/eeprom.bin
 RUN cat /secrets/encryption_key.bin >> /bootloader/eeprom.bin
-
 
 # Compile bootloader
 WORKDIR /bl_build
