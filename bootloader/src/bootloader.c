@@ -23,6 +23,7 @@
 #include "constants.h"
 #include "cfg_decrypt.h"
 #include "flash.h"
+#include "gpio.h"
 #include "mpu.h"
 #include "rand.h"
 #include "uart.h"
@@ -138,8 +139,8 @@ void handle_boot(void)
 
     uint8_t mask[RAND_BUF_LEN];
     rand_buf(mask);
-    // Overhead is too high for us to generate fresk masks
-    AES_CBC_decrypt_buffer(&ctx, (uint8_t*)FIRMWARE_BOOT_PTR , size, mask);
+    // Overhead is too high for us to generate fresh masks
+    AES_CBC_decrypt_buffer(&ctx, (uint8_t*)FIRMWARE_BOOT_PTR, size, mask);
 
     // Verify firmware signature
     if(!signature_verify((uint8_t*)FIRMWARE_SIGNATURE_PTR, (uint8_t*)FIRMWARE_BOOT_PTR, size)) {
@@ -412,6 +413,9 @@ int main(void) {
 
     // Enable MPU
     mpu_setup();
+
+    // Disable JTAG
+    gpio_lock();
 
     // If we need to set up permissions, do so.
     uint32_t control_reg;
