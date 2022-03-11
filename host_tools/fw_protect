@@ -56,7 +56,6 @@ def protect_firmware(
     encryptor = cipher.encryptor()
     enc_fw = encryptor.update(firmware_data) + encryptor.finalize()
     log.info("Packaging the firmware...")
-    log.info("Changing stuff")
 
     # Construct the metadata
     firmware_size = len(firmware_data)

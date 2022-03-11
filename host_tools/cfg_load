@@ -14,6 +14,7 @@
 import argparse
 import logging
 from pathlib import Path
+import json
 import socket
 import struct
 
@@ -27,11 +28,17 @@ def load_configuration(socket_number: int, config_file: Path):
     print_banner("SAFFIRe Configuration Tool")
 
     log.info("Reading configuration file...")
-    configuration = config_file.read_bytes()
-    # Signature is prepended
-    signature = configuration[:64]
-    configuration = configuration[64:]
-    size = len(configuration)
+    with config_file.open("rb") as cfg:
+        data = json.load(cfg)
+        signature = bytes.fromhex(data["signature"])
+        config_iv = bytes.fromhex(data["iv"])
+        configuration = bytes.fromhex(data["configuration"])
+        size = len(configuration)
+    # configuration = config_file.read_bytes()
+    # # Signature is prepended
+    # signature = configuration[:64]
+    # configuration = configuration[64:]
+    # size = len(configuration)
 
     # Connect to the bootloader
     log.info("Connecting socket...")
@@ -59,7 +66,10 @@ def load_configuration(socket_number: int, config_file: Path):
         log.info("Sending signature and data...")
         # Send signature
         sock.sendall(signature)
-
+        
+        # Send Configuration IV
+        sock.sendall(config_iv)
+        
         # Send packets
         send_packets(sock, configuration)
 

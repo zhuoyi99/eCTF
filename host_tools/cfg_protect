@@ -13,8 +13,11 @@
 
 import argparse
 import logging
+import json
+import os
 from pathlib import Path
-
+from cryptography.hazmat.primitives.ciphers import algorithms, modes, Cipher
+from cryptography.hazmat.backends import default_backend
 from util import print_banner, CONFIGURATION_ROOT, LOG_FORMAT, sign
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
@@ -29,20 +32,36 @@ def protect_configuration(raw_cfg: Path, protected_cfg: Path):
     file_data = raw_cfg.read_bytes()
 
     log.info("Signing...")
+    padding = 32 + (32 - len(file_data)%32)
+    file_data+=b"\x00"*padding
     signature = sign(file_data)
     log.info(f"Signature: {signature.hex()}")
 
     log.info("Setting up Encryption...")
 
     log.info("Encrypting the config file...")
+    key_file = Path("/secrets/encryption_key.bin")
+    key = key_file.read_bytes()[:32]
+    iv = os.urandom(16)
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), default_backend())
+    encryptor = cipher.encryptor()
+    enc_cfg = encryptor.update(file_data) + encryptor.finalize()
+
     # enc_cfg = enc.encrypt(file_data)
     #enc_cfg = file_data
-    #assert len(enc_cfg) == len(file_data), "Encrypted config is larger"
-
+    assert len(enc_cfg) == len(file_data), "Encrypted config is larger"
+    
     log.info("Packaging the configuration...")
+    data = {
+        "signature": signature.hex(),
+        "iv": iv.hex(),
+        "configuration": enc_cfg.hex()
+    }
 
     # Write to the output file
-    protected_cfg.write_bytes(signature + file_data)
+    with protected_cfg.open("w", encoding="utf8") as fd:
+        json.dump(data, fd)
+    #protected_cfg.write_bytes(signature + file_data)
 
     log.info("Configuration protected\n")
 

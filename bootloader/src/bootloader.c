@@ -170,7 +170,7 @@ void handle_boot(void)
     }
 
     // TODO Decrypt config
-    // cfg_decrypt(CONFIGURATION_STORAGE_PTR, (uint8_t*)CONFIGURATION_IV_PTR, cfg_size, &ctx);
+    cfg_decrypt(CONFIGURATION_STORAGE_PTR, (uint8_t*)CONFIGURATION_IV_PTR, cfg_size, &ctx);
     
     // Verify configuration signature
     if(!signature_verify((uint8_t*)CONFIGURATION_SIG_PTR, (uint8_t*)CONFIGURATION_STORAGE_PTR, cfg_size)) {
@@ -367,9 +367,17 @@ void handle_configure(void)
     }
     uart_writeb(HOST_UART, FRAME_OK);
 
-    // Receive digital signature of firmware
+    // Receive digital signature of configuration
     uint8_t config_signature[ED_SIGNATURE_SIZE];
     uart_read(HOST_UART, config_signature, ED_SIGNATURE_SIZE);
+
+    // Receive the config IV 
+    uint8_t config_iv_buf[16];
+    uart_read(HOST_UART, config_iv_buf, 16);
+    for (uint32_t i=0; i< 16; i++)
+        *(uint8_t*)(CONFIGURATION_IV_PTR+i) = config_iv_buf[i];
+    
+    // uart_write(HOST_UART, (uint8_t*)(CONFIGURATION_IV_PTR), 16);
  
     // Perform writes on SRAM
     handle_configure_write(config_signature, size);
