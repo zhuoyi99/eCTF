@@ -47,7 +47,7 @@ all: ${COMPILER}/bootloader.axf
 # EXAMPLE_AES=foo
 # ifdef EXAMPLE_AES
 # path to crypto library
-CRYPTOPATH=${ROOT}/lib/tiny-AES-c
+CRYPTOPATH=${ROOT}/lib/masked-aes-c
 
 # add path to crypto source files to source path
 VPATH+=${CRYPTOPATH}
@@ -126,6 +126,7 @@ ${COMPILER}/bootloader.axf: ${COMPILER}/cfg_decrypt.o
 ${COMPILER}/bootloader.axf: ${COMPILER}/flash.o
 ${COMPILER}/bootloader.axf: ${COMPILER}/flash_trampoline.o
 ${COMPILER}/bootloader.axf: ${COMPILER}/mpu.o
+${COMPILER}/bootloader.axf: ${COMPILER}/rand.o
 ${COMPILER}/bootloader.axf: ${COMPILER}/uart.o
 ${COMPILER}/bootloader.axf: ${COMPILER}/bootloader.o
 ${COMPILER}/bootloader.axf: ${COMPILER}/startup_${COMPILER}.o

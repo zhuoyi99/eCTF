@@ -39,8 +39,9 @@ def protect_firmware(
     key = key_file.read_bytes()[:32]
     iv = os.urandom(16)
     # Pad before signing
-    padding = 32 + (32 -len(firmware_data)%32)
-    firmware_data+=b"\x00"*padding
+    if len(firmware_data) % 32 != 0:
+        padding = 32 - len(firmware_data) % 32
+        firmware_data+=b"\x00"*padding
 
     log.info("Signing...")
     signature = sign(firmware_data)

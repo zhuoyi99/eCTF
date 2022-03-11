@@ -91,7 +91,7 @@
 //
 //*****************************************************************************
 static void
-_EEPROMSectorMaskSet(uint32_t ui32Address)
+__attribute__((section(".data"))) _EEPROMSectorMaskSet(uint32_t ui32Address)
 {
     uint32_t ui32Mask;
 
@@ -118,7 +118,7 @@ _EEPROMSectorMaskSet(uint32_t ui32Address)
 //
 //*****************************************************************************
 static void
-_EEPROMSectorMaskClear(void)
+__attribute__((section(".data"))) _EEPROMSectorMaskClear(void)
 {
     SysCtlDelay(10);
     HWREG(0x400FD0FC) = 3;
@@ -304,7 +304,7 @@ EEPROMBlockCountGet(void)
 //
 //*****************************************************************************
 void
-EEPROMRead(uint32_t *pui32Data, uint32_t ui32Address, uint32_t ui32Count)
+__attribute__((section(".data"))) EEPROMRead(uint32_t *pui32Data, uint32_t ui32Address, uint32_t ui32Count)
 {
     //
     // Check parameters in a debug build.
@@ -378,7 +378,7 @@ EEPROMRead(uint32_t *pui32Data, uint32_t ui32Address, uint32_t ui32Count)
 //
 //*****************************************************************************
 uint32_t
-EEPROMProgram(uint32_t *pui32Data, uint32_t ui32Address, uint32_t ui32Count)
+__attribute__((section(".data"))) EEPROMProgram(uint32_t *pui32Data, uint32_t ui32Address, uint32_t ui32Count)
 {
     uint32_t ui32Status;
 

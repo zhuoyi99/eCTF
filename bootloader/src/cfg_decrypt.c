@@ -1,6 +1,7 @@
 #include "cfg_decrypt.h"
 #include "flash.h"
 #include "flash_trampoline.h"
+#include "rand.h"
 
 __attribute__((section(".data"))) void cfg_decrypt(uint8_t* configuration_storage, uint32_t size, struct AES_ctx* ctx) {
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
@@ -17,6 +18,8 @@ __attribute__((section(".data"))) void cfg_decrypt(uint8_t* configuration_storag
     // We need to buffer full pages because we erase pages as we go
     // Similar to load_data
     uint8_t inbuf[FLASH_PAGE_SIZE];
+    uint8_t mask[RAND_BUF_LEN]; // > 10 so ok
+    rand_buf(mask);
     uint32_t cur_size;
     while(size > 0) {
         if(size < FLASH_PAGE_SIZE) {
@@ -31,8 +34,9 @@ __attribute__((section(".data"))) void cfg_decrypt(uint8_t* configuration_storag
         for(uint32_t n = 0; n < cur_size; n++) {
             inbuf[n] = *((uint8_t*)configuration_storage+n);
         }
+        
+        AES_CBC_decrypt_buffer(ctx, inbuf, cur_size, mask);
 
-        AES_CBC_decrypt_buffer(ctx, inbuf, cur_size);
         flash_erase_page_unsafe((uint32_t)configuration_storage);
         flash_write_unsafe((uint32_t*)inbuf, (uint32_t)configuration_storage, FLASH_PAGE_SIZE/4);
         configuration_storage += FLASH_PAGE_SIZE;

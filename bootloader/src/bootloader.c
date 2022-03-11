@@ -24,10 +24,9 @@
 #include "cfg_decrypt.h"
 #include "flash.h"
 #include "mpu.h"
+#include "rand.h"
 #include "uart.h"
 
-// #include "tinycrypt/aes.h"
-// #include "tinycrypt/cbc_mode.h"
 #include "aes.h"
 
 // ED25519 Signatures
@@ -44,22 +43,6 @@ unsigned char ED_PUBLIC_KEY[32];
 #include "sha256.h" // same sha256 include as flash_trampoline.h
 
 /**
- * @brief Increment a counter variable stored on EEPROM.
- */
-void inc_counter (uint8_t *counter) {
-    uint8_t *loc = counter + AUTH_CTR_LEN - 1;
-    while (loc != counter - 1) {
-	(*loc)++;
-	if (*loc != 0x0) {
-            break;
-	}
-        --loc;
-    }
-
-    EEPROMProgram((uint32_t *) counter, AUTH_CTR, AUTH_CTR_LEN);
-}
-
-/**
  * @brief Device side authentication, issue challenge, validate response, respond to challenge
  * 
  * @return true if mutual authentication succeeded, false if some step failed
@@ -70,18 +53,8 @@ bool auth (void) {
     //     and with Dockerfile 1 (for the bootloader) (use bootloader/eeprom.bin, which gets used in Dockerfile 2) 
 
     // create random 32B value by basically doing challenge = SHA(counter + seed); counter++;
-    uint8_t counter[AUTH_CTR_LEN];
-    uint8_t seed[AUTH_SEED_LEN];
-    EEPROMRead((uint32_t *) counter, AUTH_CTR, AUTH_CTR_LEN);
-    EEPROMRead((uint32_t *) seed, AUTH_SEED, AUTH_SEED_LEN);
-    
-    uint8_t challenge[AUTH_CH_LEN]; 
-    SHA256_CTX chal_ctx;
-    sha256_init(&chal_ctx);
-    sha256_update(&chal_ctx, counter, AUTH_CTR_LEN);
-    sha256_update(&chal_ctx, seed, AUTH_SEED_LEN);
-    sha256_final(&chal_ctx, challenge);
-    inc_counter(counter);
+    uint8_t challenge[RAND_BUF_LEN];
+    rand_buf(challenge);
 
     // get symmetric key from EEPROM
     uint8_t sym_key[AUTH_KEY_LEN];
@@ -89,7 +62,7 @@ bool auth (void) {
     EEPROMRead((uint32_t *) sym_key, AUTH_KEY, AUTH_KEY_LEN);
 
     // issue challenge
-    uart_write(HOST_UART, challenge, AUTH_CH_LEN);
+    uart_write(HOST_UART, challenge, RAND_BUF_LEN);
 
     // compute expected digest, basically SHA256(challenge + key) 
     uint8_t expected_digest[AUTH_DIGEST_LEN];
@@ -162,7 +135,11 @@ void handle_boot(void)
     for(uint32_t i = 0; i < size; i++) {
         *((uint8_t*)FIRMWARE_BOOT_PTR + i) = *((uint8_t*)FIRMWARE_STORAGE_PTR + i);
     }
-    AES_CBC_decrypt_buffer(&ctx, (uint8_t*)FIRMWARE_BOOT_PTR, size);
+
+    uint8_t mask[RAND_BUF_LEN];
+    rand_buf(mask);
+    // Overhead is too high for us to generate fresk masks
+    AES_CBC_decrypt_buffer(&ctx, (uint8_t*)FIRMWARE_BOOT_PTR , size, mask);
 
     // Verify firmware signature
     if(!signature_verify((uint8_t*)FIRMWARE_SIGNATURE_PTR, (uint8_t*)FIRMWARE_BOOT_PTR, size)) {
@@ -428,8 +405,7 @@ void handle_integrity_challenge(void) {
  * @return int
  */
 int main(void) {
-    // Stack space collision causes problems after a soft reset here.
-    // I am not sure why it's not properly restored by Bootloader_Startup, but the instructions get clobbered - likely a bug with the stack after resets. We get to do this ourselves.
+    // Likely due to problems with using the _pui32Stack region with the bootstrapper, I have moved the .data section (re-)initialization here.
     uint32_t* source = &_ldata;
     for(uint32_t* start = &_data; start < &_edata;)
         *start++ = *source++;
@@ -464,6 +440,9 @@ int main(void) {
         EEPROMRead((uint32_t*)default_version_signature, DEFAULT_VERSION_SIGNATURE_LOCATION, ED_SIGNATURE_SIZE);
         EEPROMBlockHide(EEPROMBlockFromAddr(DEFAULT_VERSION_SIGNATURE_LOCATION));
         flash_write((uint32_t*)default_version_signature, FIRMWARE_V_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
+
+        // Hide secrets block
+        EEPROMBlockHide(31);
     }
 
     uint8_t cmd = 0;

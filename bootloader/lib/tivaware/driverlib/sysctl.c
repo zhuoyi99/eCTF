@@ -1826,7 +1826,7 @@ SysCtlResetCauseClear(uint32_t ui32Causes)
 //
 //*****************************************************************************
 #if defined(ewarm) || defined(DOXYGEN)
-void
+__attribute__((section(".data"))) void
 SysCtlDelay(uint32_t ui32Count)
 {
     __asm("    subs    r0, #1\n"
@@ -1835,7 +1835,7 @@ SysCtlDelay(uint32_t ui32Count)
 }
 #endif
 #if defined(codered) || defined(gcc) || defined(sourcerygxx)
-void __attribute__((naked))
+__attribute__((section(".data"))) void __attribute__((naked))
 SysCtlDelay(uint32_t ui32Count)
 {
     __asm("    subs    r0, #1\n"
@@ -1844,7 +1844,7 @@ SysCtlDelay(uint32_t ui32Count)
 }
 #endif
 #if defined(rvmdk) || defined(__ARMCC_VERSION)
-__asm void
+__attribute__((section(".data"))) __asm void
 SysCtlDelay(uint32_t ui32Count)
 {
     subs    r0, #1;

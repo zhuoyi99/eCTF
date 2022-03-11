@@ -32,8 +32,9 @@ def protect_configuration(raw_cfg: Path, protected_cfg: Path):
     file_data = raw_cfg.read_bytes()
 
     log.info("Signing...")
-    padding = 32 + (32 - len(file_data)%32)
-    file_data+=b"\x00"*padding
+    if len(file_data) % 32 != 0:
+        padding = 32 - len(file_data) % 32
+        file_data+=b"\x00"*padding
     signature = sign(file_data)
     log.info(f"Signature: {signature.hex()}")
 
