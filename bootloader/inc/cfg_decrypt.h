@@ -4,8 +4,8 @@
 #include "aes.h"
 
 /**
- * @brief Decrypts the configuration in place.
+ * @brief Decrypts the configuration in place. Assumes ctx has been initialized with key and IV.
  */
-void cfg_decrypt(uint8_t* configuration_storage, uint8_t* iv, uint32_t size, struct AES_ctx* ctx);
+void cfg_decrypt(uint8_t* configuration_storage, uint32_t size, struct AES_ctx* ctx);
 
 #endif

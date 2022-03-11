@@ -213,7 +213,9 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];
 
     // Including two pages for metadata and one for signatures
-    uint32_t padded_size = size + (FLASH_PAGE_SIZE - size % FLASH_PAGE_SIZE) + FLASH_PAGE_SIZE * 3;
+    uint32_t padded_size = size + FLASH_PAGE_SIZE * 3;
+    if(padded_size % FLASH_PAGE_SIZE != 0)
+        padded_size += FLASH_PAGE_SIZE - padded_size % FLASH_PAGE_SIZE;
 
     // Flash check!
     current_hash(hash, (uint8_t*)FIRMWARE_BASE_PTR, padded_size);
@@ -272,18 +274,23 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
 /**
  * @brief Trusted part of configuration load.
  */
-__attribute__((section(".data"))) void handle_configure_write(uint8_t* config_signature, uint32_t size) {
+__attribute__((section(".data"))) void handle_configure_write(uint8_t* config_signature, uint32_t size, uint8_t* iv) {
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];
 
     // Including one page for metadata
-    uint32_t padded_size = size + (FLASH_PAGE_SIZE - size % FLASH_PAGE_SIZE) + FLASH_PAGE_SIZE;
+    uint32_t padded_size = size + FLASH_PAGE_SIZE;
+    if(padded_size % FLASH_PAGE_SIZE != 0)
+        padded_size += FLASH_PAGE_SIZE - padded_size % FLASH_PAGE_SIZE;
 
     // Flash check!
     current_hash(hash, (uint8_t*)CONFIGURATION_METADATA_PTR, padded_size);
     
     flash_erase_page_unsafe(CONFIGURATION_METADATA_PTR);
     flash_write_word_unsafe(size, CONFIGURATION_SIZE_PTR);
+    
+    // Save IV
+    flash_write_unsafe((uint32_t*)iv, CONFIGURATION_IV_PTR, 4);
 
     // Save signature
     flash_write_unsafe((uint32_t*)config_signature, CONFIGURATION_SIG_PTR, ED_SIGNATURE_SIZE/4);

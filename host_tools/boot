@@ -59,6 +59,9 @@ def boot(socket_number: int, release_message_file: Path):
             if msg == b"J":
                 log.error(f"Boot failed due to uninitialized configuration.")
                 exit(1)
+            if msg == b"P":
+                log.error(f"Boot failed due to panic - flash corrupted or trojan activated.")
+                exit(1)
             exit(f"Boot failed with code {repr(msg)}")
 
         # Receive release message

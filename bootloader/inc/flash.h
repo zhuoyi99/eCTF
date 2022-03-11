@@ -83,7 +83,7 @@ void handle_update_write(uint8_t* rel_msg, uint8_t* fw_signature, uint8_t* versi
 /**
  * @brief Trusted part of configuration load.
  */
-void handle_configure_write(uint8_t* config_signature, uint32_t size);
+void handle_configure_write(uint8_t* config_signature, uint32_t size, uint8_t* iv);
 
 /**
  * @brief Forcefully disable JTAG interface.

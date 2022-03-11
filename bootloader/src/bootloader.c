@@ -21,6 +21,7 @@
 #include "inc/hw_types.h"
 
 #include "constants.h"
+#include "cfg_decrypt.h"
 #include "flash.h"
 #include "mpu.h"
 #include "uart.h"
@@ -169,8 +170,8 @@ void handle_boot(void)
         return;
     }
 
-    // TODO Decrypt config
-    cfg_decrypt(CONFIGURATION_STORAGE_PTR, (uint8_t*)CONFIGURATION_IV_PTR, cfg_size, &ctx);
+    AES_ctx_set_iv(&ctx, (uint8_t*)CONFIGURATION_IV_PTR);
+    cfg_decrypt((uint8_t*)CONFIGURATION_STORAGE_PTR, cfg_size, &ctx);
     
     // Verify configuration signature
     if(!signature_verify((uint8_t*)CONFIGURATION_SIG_PTR, (uint8_t*)CONFIGURATION_STORAGE_PTR, cfg_size)) {
@@ -213,11 +214,20 @@ void handle_readback(void)
     region = (uint32_t)uart_readb(HOST_UART);
 
     if (region == 'F') {
+        // Check version signature and alert host on violation
+        uint8_t version_and_iv[20];
+        for(uint32_t i = 0; i < 5; i++)
+            *((uint32_t*)version_and_iv + i) = *((uint32_t*)FIRMWARE_VIV_PTR + i);
+        if(!signature_verify((uint8_t*)FIRMWARE_V_SIGNATURE_PTR, (uint8_t*)version_and_iv, sizeof(version_and_iv))) {
+            uart_writeb(HOST_UART, 'Z');
+            return;
+        }
+
         // Set the base address for the readback
         address = (uint8_t *)FIRMWARE_STORAGE_PTR;
         size = *((uint32_t *)FIRMWARE_SIZE_PTR);
         signature = (uint8_t *)FIRMWARE_SIGNATURE_PTR;
-        iv = (uint8_t *)FIRMWARE_VIV_PTR;
+        iv = (uint8_t *)FIRMWARE_VIV_PTR + 4;
         // Acknowledge the host
         uart_writeb(HOST_UART, 'F');
     } else if (region == 'C') {
@@ -239,7 +249,7 @@ void handle_readback(void)
     uart_write(HOST_UART, signature, ED_SIGNATURE_SIZE);
     
     // Read out signed ver, IV
-    uart_write(HOST_UART, iv, 20);
+    uart_write(HOST_UART, iv, 16);
     
     // Wait for host to be ready
     uart_readb(HOST_UART);
@@ -277,8 +287,8 @@ void handle_update(void)
     size |= ((uint32_t)uart_readb(HOST_UART)) << 16;
     size |= ((uint32_t)uart_readb(HOST_UART)) << 8;
     size |= (uint32_t)uart_readb(HOST_UART);
-    // Validate this is sensible (within 16kb limit)
-    if(size > FIRMWARE_MAX_SIZE) {
+    // Validate this is sensible (within 16kb limit, padded to AES block size)
+    if(size > FIRMWARE_MAX_SIZE || size % 16 != 0) {
         uart_writeb(HOST_UART, FRAME_BAD);
         return;
     }
@@ -360,8 +370,8 @@ void handle_configure(void)
     size |= (((uint32_t)uart_readb(HOST_UART)) << 16);
     size |= (((uint32_t)uart_readb(HOST_UART)) << 8);
     size |= ((uint32_t)uart_readb(HOST_UART));
-    // Validate this is sensible (within limit)
-    if(size > CONFIGURATION_MAX_SIZE) {
+    // Validate this is sensible (within limit, padded to AES block size)
+    if(size > CONFIGURATION_MAX_SIZE || size % 16 != 0) {
         uart_writeb(HOST_UART, FRAME_BAD);
         return;
     }
@@ -374,13 +384,11 @@ void handle_configure(void)
     // Receive the config IV 
     uint8_t config_iv_buf[16];
     uart_read(HOST_UART, config_iv_buf, 16);
-    for (uint32_t i=0; i< 16; i++)
-        *(uint8_t*)(CONFIGURATION_IV_PTR+i) = config_iv_buf[i];
     
     // uart_write(HOST_UART, (uint8_t*)(CONFIGURATION_IV_PTR), 16);
  
     // Perform writes on SRAM
-    handle_configure_write(config_signature, size);
+    handle_configure_write(config_signature, size, config_iv_buf);
 }
 
 // Linker segment definitions

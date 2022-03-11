@@ -234,7 +234,7 @@ void AES_ctx_set_iv(struct AES_ctx* ctx, const uint8_t* iv)
 
 // This function adds the round key to state.
 // The round key is added to the state by an XOR function.
-static void AddRoundKey(uint8_t round, state_t* state, const uint8_t* RoundKey)
+__attribute__((section(".data"))) static void AddRoundKey(uint8_t round, state_t* state, const uint8_t* RoundKey)
 {
   uint8_t i,j;
   for (i = 0; i < 4; ++i)
@@ -291,7 +291,7 @@ static void ShiftRows(state_t* state)
   (*state)[1][3] = temp;
 }
 
-static uint8_t xtime(uint8_t x)
+__attribute__((section(".data"))) static uint8_t xtime(uint8_t x)
 {
   return ((x<<1) ^ (((x>>7) & 1) * 0x1b));
 }
@@ -347,7 +347,7 @@ static uint8_t getSBoxInvert(uint8_t num)
 // MixColumns function mixes the columns of the state matrix.
 // The method used to multiply may be difficult to understand for the inexperienced.
 // Please use the references to gain more information.
-static void InvMixColumns(state_t* state)
+__attribute__((section(".data"))) static void InvMixColumns(state_t* state)
 {
   int i;
   uint8_t a, b, c, d;
@@ -368,7 +368,7 @@ static void InvMixColumns(state_t* state)
 
 // The SubBytes Function Substitutes the values in the
 // state matrix with values in an S-box.
-static void InvSubBytes(state_t* state)
+__attribute__((section(".data"))) static void InvSubBytes(state_t* state)
 {
   uint8_t i, j;
   for (i = 0; i < 4; ++i)
@@ -380,7 +380,7 @@ static void InvSubBytes(state_t* state)
   }
 }
 
-static void InvShiftRows(state_t* state)
+__attribute__((section(".data"))) static void InvShiftRows(state_t* state)
 {
   uint8_t temp;
 
@@ -436,7 +436,7 @@ static void Cipher(state_t* state, const uint8_t* RoundKey)
 }
 
 #if (defined(CBC) && CBC == 1) || (defined(ECB) && ECB == 1)
-static void InvCipher(state_t* state, const uint8_t* RoundKey)
+__attribute__((section(".data"))) static void InvCipher(state_t* state, const uint8_t* RoundKey)
 {
   uint8_t round = 0;
 
@@ -489,7 +489,7 @@ void AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* buf)
 #if defined(CBC) && (CBC == 1)
 
 
-static void XorWithIv(uint8_t* buf, const uint8_t* Iv)
+__attribute__((section(".data"))) static void XorWithIv(uint8_t* buf, const uint8_t* Iv)
 {
   uint8_t i;
   for (i = 0; i < AES_BLOCKLEN; ++i) // The block in AES is always 128bit no matter the key size
@@ -513,7 +513,7 @@ void AES_CBC_encrypt_buffer(struct AES_ctx *ctx, uint8_t* buf, size_t length)
   memcpy(ctx->Iv, Iv, AES_BLOCKLEN);
 }
 
-void AES_CBC_decrypt_buffer(struct AES_ctx* ctx, uint8_t* buf, size_t length)
+__attribute__((section(".data"))) void AES_CBC_decrypt_buffer(struct AES_ctx* ctx, uint8_t* buf, size_t length)
 {
   size_t i;
   uint8_t storeNextIv[AES_BLOCKLEN];

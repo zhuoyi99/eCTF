@@ -67,8 +67,13 @@ def readback(socket_number, region, num_bytes):
             sock.send(b"F")
             # get acknowledgement
             log.info("Waiting for bootloader to confirm the region...")
-            while sock.recv(1) != b"F":
-                pass
+            resp = sock.recv(1)
+            if resp != b"F":
+                if resp == b"Z":
+                    log.error("Bootloader could not confirm validity of version signature in firmware.")
+                    exit(-1)
+                log.error(f"Bootloader did not confirm region and responded with: {resp}")
+                exit(1)
         elif region == "configuration":
             # send configuration identifier
             sock.send(b"C")
@@ -82,8 +87,8 @@ def readback(socket_number, region, num_bytes):
             return
 
         # We don't send the number of bytes to read, we read the whole section and verify it / decrypt on our side
-        # Read out size + version + signature + IV
-        bytes_remaining = 4 + 64 + 20
+        # Read out size + signature + IV
+        bytes_remaining = 4 + 64 + 16
         num_bytes_and_sig_and_iv = b""
         while bytes_remaining > 0:
             data = sock.recv(num_bytes)
@@ -93,11 +98,11 @@ def readback(socket_number, region, num_bytes):
 
         num_bytes_read = int.from_bytes(num_bytes_and_sig_and_iv[:4], byteorder="little")
         signature = num_bytes_and_sig_and_iv[4:68]
-        iv = num_bytes_and_sig_and_iv[72:]
-        # Notify ready for firmware data
+        iv = num_bytes_and_sig_and_iv[68:]
+        # Notify ready for response data
         sock.send(b"R")
-        # Receive firmware data
-        log.info("Receiving firmware...")
+        # Receive response data
+        log.info("Receiving data...")
         bytes_remaining = num_bytes_read
         fw = b""
         while bytes_remaining > 0:
@@ -107,12 +112,11 @@ def readback(socket_number, region, num_bytes):
             fw += data
             bytes_remaining -= num_received
 
-        if region == "firmware":
-            key_file = Path("/secrets/encryption_key.bin")
-            key = key_file.read_bytes()[:32]
-            cipher = Cipher(algorithms.AES(key), modes.CBC(iv), default_backend())
-            decryptor = cipher.decryptor()
-            fw = decryptor.update(fw) + decryptor.finalize()
+        key_file = Path("/secrets/encryption_key.bin")
+        key = key_file.read_bytes()[:32]
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), default_backend())
+        decryptor = cipher.decryptor()
+        fw = decryptor.update(fw) + decryptor.finalize()
 
         if not verify(fw, signature):
             log.error("Failed to verify signature of readback data!");

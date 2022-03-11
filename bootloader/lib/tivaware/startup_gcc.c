@@ -73,11 +73,14 @@ static volatile uint32_t pui32Stack[64];
 // for the "data" segment resides immediately following the "text" segment.
 //
 //*****************************************************************************
+// This does not work with the bootstrapper.
+/*
 extern uint32_t _ldata;
 extern uint32_t _data;
 extern uint32_t _edata;
 extern uint32_t _bss;
 extern uint32_t _ebss;
+*/
 
 //*****************************************************************************
 //
@@ -95,16 +98,18 @@ void Bootloader_Startup(void)
     // Load initial stack pointer for setup purposes
     __asm("ldr sp, =pui32Stack");
 
-    uint32_t *pui32Src, *pui32Dest;
+    // uint32_t *pui32Src, *pui32Dest;
 
     //
     // Copy the data segment initializers from flash to SRAM.
     //
+    /* This does not work properly until stack is set up for application.
     pui32Src = &_ldata;
     for(pui32Dest = &_data; pui32Dest < &_edata; )
     {
         *pui32Dest++ = *pui32Src++;
     }
+    */
 
     //
     // Zero fill the bss segment. Set the actual application stack pointer
@@ -126,6 +131,8 @@ void Bootloader_Startup(void)
     main();
 }
 
+// Disalbe unused warning for these
+#pragma GCC diagnostic ignored "-Wunused-function"
 //*****************************************************************************
 //
 // This is the code that gets called when the processor receives a NMI.  This
@@ -179,3 +186,4 @@ IntDefaultHandler(void)
     {
     }
 }
+#pragma GCC diagnostic pop

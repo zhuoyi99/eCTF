@@ -70,7 +70,7 @@ ${COMPILER}/bootloader.axf: ${COMPILER}/aes.o
 CRYPTPATH=${ROOT}/lib/ed25519/src
 VPATH+=${CRYPTPATH}
 IPATH+=${CRYPTPATH}
-${COMPILER}/bootloader.axf: ${CRYPTPATH}/add_scalar.o ${CRYPTPATH}/fe.o ${CRYPTPATH}/ge.o ${CRYPTPATH}/key_exchange.o ${CRYPTPATH}/keypair.o ${CRYPTPATH}/sc.o ${CRYPTPATH}/seed.o ${CRYPTPATH}/sha512.o ${CRYPTPATH}/sign.o ${CRYPTPATH}/verify.o
+${COMPILER}/bootloader.axf: ${COMPILER}/add_scalar.o ${COMPILER}/fe.o ${COMPILER}/ge.o ${COMPILER}/key_exchange.o ${COMPILER}/keypair.o ${COMPILER}/sc.o ${COMPILER}/seed.o ${COMPILER}/sha512.o ${COMPILER}/sign.o ${COMPILER}/verify.o
 ################## end signature lib ###############
 
 ################ start tinycrypt ###################
@@ -85,7 +85,7 @@ ${COMPILER}/bootloader.axf: ${CRYPTPATH}/add_scalar.o ${CRYPTPATH}/fe.o ${CRYPTP
 SHAPATH=${ROOT}/lib/sha256
 VPATH+=${SHAPATH}
 IPATH+=${SHAPATH}
-${COMPILER}/bootloader.axf: ${SHAPATH}/sha256.o
+${COMPILER}/bootloader.axf: ${COMPILER}/sha256.o
 ###########################
 
 # build libraries

@@ -2,26 +2,44 @@
 #include "flash.h"
 #include "flash_trampoline.h"
 
-__attribute__((section(".data"))) void cfg_decrypt(uint8_t* configuration_storage, uint8_t* iv, uint32_t size, struct AES_ctx* ctx) {
+__attribute__((section(".data"))) void cfg_decrypt(uint8_t* configuration_storage, uint32_t size, struct AES_ctx* ctx) {
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];
+    
+    // Pad size to FLASH_PAGE_SIZE (note, already padded to AES block size)
+    uint32_t padded_size = size;
+    if(padded_size % FLASH_PAGE_SIZE != 0)
+        padded_size += FLASH_PAGE_SIZE - size % FLASH_PAGE_SIZE;
 
     // Flash check!
-    current_hash(hash, (uint8_t*)configuration_storage, size);
+    current_hash(hash, (uint8_t*)configuration_storage, padded_size);
 
-    uint8_t inbuf[32];
-    // Padded to 32 before
-    uint32_t iterations = size / 32;
-    AES_ctx_set_iv(ctx, iv);
-    for(uint32_t m = 0; m < iterations; m++) {
-        for(uint32_t n = 0; n < 32; n++) {
-            inbuf[n] = *((uint8_t*)configuration_storage+32*m+n);
+    // We need to buffer full pages because we erase pages as we go
+    // Similar to load_data
+    uint8_t inbuf[FLASH_PAGE_SIZE];
+    uint32_t cur_size;
+    while(size > 0) {
+        if(size < FLASH_PAGE_SIZE) {
+            cur_size = size;
+            // Pad out
+            for(uint32_t i = cur_size; i < FLASH_PAGE_SIZE; i++)
+                inbuf[i] = 0xFF;
+        } else {
+            cur_size = FLASH_PAGE_SIZE;
         }
-        AES_CBC_decrypt_buffer(ctx, inbuf, 32);
-        flash_write_unsafe((uint32_t*)inbuf, (uint32_t)configuration_storage+32*m, 32/4);
+
+        for(uint32_t n = 0; n < cur_size; n++) {
+            inbuf[n] = *((uint8_t*)configuration_storage+n);
+        }
+
+        AES_CBC_decrypt_buffer(ctx, inbuf, cur_size);
+        flash_erase_page_unsafe((uint32_t)configuration_storage);
+        flash_write_unsafe((uint32_t*)inbuf, (uint32_t)configuration_storage, FLASH_PAGE_SIZE/4);
+        configuration_storage += FLASH_PAGE_SIZE;
+        size -= cur_size;
     }
 
-    current_hash(hash2, (uint8_t*)configuration_storage, size);
+    current_hash(hash2, (uint8_t*)configuration_storage - padded_size, padded_size);
     for(int i = 0; i < TC_SHA256_DIGEST_SIZE; i++) {
         if(hash[i] != hash2[i]) panic();
     }
