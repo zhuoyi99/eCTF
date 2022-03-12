@@ -60,6 +60,9 @@ def send_packets(sock: socket.socket, data: bytes):
         resp = sock.recv(1)  # Wait for an OK from the bootloader
 
         if resp != RESP_OK:
+            if resp == b"P":
+                log.error("Bootloader went into panic mode due to integrity violation!")
+                exit(-1)
             exit(f"ERROR: Bootloader responded with {repr(resp)}")
 
 import ed25519

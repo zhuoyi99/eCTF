@@ -79,6 +79,12 @@ def update_firmware(socket_number: int, firmware_file: Path):
         log.info("Sending firmware packets...")
         send_packets(sock, firmware)
 
+        log.info("Waiting for final OK...");
+        response = sock.recv(1)
+        if response == b"P":
+            log.error("Bootloader went into panic mode due to integrity violation!")
+            exit(-1)
+
         log.info("Firmware updated\n")
 
 
