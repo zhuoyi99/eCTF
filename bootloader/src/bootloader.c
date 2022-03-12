@@ -23,6 +23,7 @@
 #include "constants.h"
 #include "cfg_decrypt.h"
 #include "flash.h"
+#include "flash_trampoline.h"
 #include "gpio.h"
 #include "mpu.h"
 #include "rand.h"
@@ -137,10 +138,15 @@ void handle_boot(void)
         *((uint8_t*)FIRMWARE_BOOT_PTR + i) = *((uint8_t*)FIRMWARE_STORAGE_PTR + i);
     }
 
-    uint8_t mask[RAND_BUF_LEN];
+    uint8_t mask[RAND_BUF_LEN + 4];
     rand_buf(mask);
-    // Overhead is too high for us to generate fresh masks
-    AES_CBC_decrypt_buffer(&ctx, (uint8_t*)FIRMWARE_BOOT_PTR, size, mask);
+    // Attempt to "spread" mask randomness
+    uint32_t mask_ofs = 0;
+    for(uint32_t i = 0; i < size; i += 16) {
+        AES_CBC_decrypt_buffer(&ctx, (uint8_t*)FIRMWARE_BOOT_PTR + i, 16, mask + mask_ofs);
+        mask_ofs++;
+        mask_ofs %= RAND_BUF_LEN;
+    }
 
     // Verify firmware signature
     if(!signature_verify((uint8_t*)FIRMWARE_SIGNATURE_PTR, (uint8_t*)FIRMWARE_BOOT_PTR, size)) {
@@ -331,6 +337,9 @@ void handle_update(void)
     *(uint32_t*)rel_msg = size;
 
     handle_update_write(rel_msg, fw_signature, version_and_iv, version_signature, size, rel_msg_size);
+
+    // Final confirmation for host tools
+    uart_writeb(HOST_UART, 'O');
 }
 
 /**
@@ -367,6 +376,9 @@ void handle_configure(void)
  
     // Perform writes on SRAM
     handle_configure_write(config_signature, size, config_iv_buf);
+
+    // Final confirmation for host tools
+    uart_writeb(HOST_UART, 'O');
 }
 
 // Linker segment definitions
@@ -434,6 +446,13 @@ int main(void) {
     // Initialize EEPROM
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0);
     EEPROMInit();
+
+    // Check if we panic'd before (set to 0) and if so, continue (to help host tools know)
+    uint32_t panic_field;
+    EEPROMRead(&panic_field, PANIC_BIT_LOC, 4);
+    if(panic_field != 0xffffffff) {
+        panic();
+    }
 
     // Read signature public key from EEPROM
     EEPROMRead((uint32_t*)&ED_PUBLIC_KEY, ED_PUBLIC_KEY_LOCATION, 32);

@@ -73,7 +73,7 @@ int32_t flash_write_unsafe(uint32_t *data, uint32_t addr, uint32_t count);
  * @param dst is the starting page address to store the data.
  * @param size is the number of bytes to load.
  */
-void load_data_unsafe(uint32_t interface, uint32_t dst, uint32_t size);
+void load_data_unsafe(uint32_t interface, uint32_t dst, uint32_t size, const uint32_t max_size);
 
 /**
  * @brief Trusted part of firmware load.

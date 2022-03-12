@@ -178,11 +178,17 @@ __attribute__((section(".data"))) int32_t flash_write(uint32_t *data, uint32_t a
     return status;
 }
 
-__attribute__((section(".data"))) void load_data_unsafe(uint32_t interface, uint32_t dst, uint32_t size)
+__attribute__((section(".data"))) void load_data_unsafe(uint32_t interface, uint32_t dst, uint32_t size, const uint32_t max_size)
 {
     int i;
     uint32_t frame_size;
     uint8_t page_buffer[FLASH_PAGE_SIZE];
+
+    // Clear whole flash region at once
+    // assert: max_size % FLASH_PAGE_SIZE == 0
+    for(i = 0; i < max_size; i += FLASH_PAGE_SIZE) {
+        flash_erase_page_unsafe(dst + i);
+    }
 
     while(size > 0) {
         // calculate frame size
@@ -193,8 +199,6 @@ __attribute__((section(".data"))) void load_data_unsafe(uint32_t interface, uint
         for(i = frame_size; i < FLASH_PAGE_SIZE; i++) {
             page_buffer[i] = 0xFF;
         }
-        // clear flash page
-        flash_erase_page_unsafe(dst);
         // write flash page
         flash_write_unsafe((uint32_t *)page_buffer, dst, FLASH_PAGE_SIZE >> 2);
         // next page and decrease size
@@ -213,9 +217,7 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];
 
     // Including two pages for metadata and one for signatures
-    uint32_t padded_size = size + FLASH_PAGE_SIZE * 3;
-    if(padded_size % FLASH_PAGE_SIZE != 0)
-        padded_size += FLASH_PAGE_SIZE - padded_size % FLASH_PAGE_SIZE;
+    const uint32_t padded_size = FIRMWARE_MAX_SIZE + FLASH_PAGE_SIZE * 3;
 
     // Flash check!
     current_hash(hash, (uint8_t*)FIRMWARE_BASE_PTR, padded_size);
@@ -263,7 +265,7 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
     uart_writeb(HOST_UART, FRAME_OK);
     
     // Retrieve firmware
-    load_data_unsafe(HOST_UART, FIRMWARE_STORAGE_PTR, size);
+    load_data_unsafe(HOST_UART, FIRMWARE_STORAGE_PTR, size, FIRMWARE_MAX_SIZE);
 
     current_hash(hash2, (uint8_t*)FIRMWARE_BASE_PTR, padded_size);
     for(int i = 0; i < TC_SHA256_DIGEST_SIZE; i++) {
@@ -279,9 +281,7 @@ __attribute__((section(".data"))) void handle_configure_write(uint8_t* config_si
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];
 
     // Including one page for metadata
-    uint32_t padded_size = size + FLASH_PAGE_SIZE;
-    if(padded_size % FLASH_PAGE_SIZE != 0)
-        padded_size += FLASH_PAGE_SIZE - padded_size % FLASH_PAGE_SIZE;
+    const uint32_t padded_size = CONFIGURATION_MAX_SIZE + FLASH_PAGE_SIZE;
 
     // Flash check!
     current_hash(hash, (uint8_t*)CONFIGURATION_METADATA_PTR, padded_size);
@@ -296,7 +296,7 @@ __attribute__((section(".data"))) void handle_configure_write(uint8_t* config_si
     flash_write_unsafe((uint32_t*)config_signature, CONFIGURATION_SIG_PTR, ED_SIGNATURE_SIZE/4);
 
     // Retrieve configuration
-    load_data_unsafe(HOST_UART, CONFIGURATION_STORAGE_PTR, size);
+    load_data_unsafe(HOST_UART, CONFIGURATION_STORAGE_PTR, size, CONFIGURATION_MAX_SIZE);
 
     current_hash(hash2, (uint8_t*)CONFIGURATION_METADATA_PTR, padded_size);
     for(int i = 0; i < TC_SHA256_DIGEST_SIZE; i++) {

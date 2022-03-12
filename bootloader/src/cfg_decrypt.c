@@ -18,8 +18,9 @@ __attribute__((section(".data"))) void cfg_decrypt(uint8_t* configuration_storag
     // We need to buffer full pages because we erase pages as we go
     // Similar to load_data
     uint8_t inbuf[FLASH_PAGE_SIZE];
-    uint8_t mask[RAND_BUF_LEN]; // > 10 so ok
+    uint8_t mask[RAND_BUF_LEN + 4];
     rand_buf(mask);
+    uint32_t mask_ofs = 0;
     uint32_t cur_size;
     while(size > 0) {
         if(size < FLASH_PAGE_SIZE) {
@@ -35,7 +36,9 @@ __attribute__((section(".data"))) void cfg_decrypt(uint8_t* configuration_storag
             inbuf[n] = *((uint8_t*)configuration_storage+n);
         }
         
-        AES_CBC_decrypt_buffer(ctx, inbuf, cur_size, mask);
+        AES_CBC_decrypt_buffer(ctx, inbuf, cur_size, mask + mask_ofs);
+        mask_ofs += 2;
+        mask_ofs %= RAND_BUF_LEN;
 
         flash_erase_page_unsafe((uint32_t)configuration_storage);
         flash_write_unsafe((uint32_t*)inbuf, (uint32_t)configuration_storage, FLASH_PAGE_SIZE/4);
