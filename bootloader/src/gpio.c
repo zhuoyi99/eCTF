@@ -8,13 +8,13 @@
 #include "driverlib/gpio.h"
 #include "driverlib/rom.h"
 #include "driverlib/rom_map.h"
+#include "driverlib/sysctl.h"
 
 void gpio_lock() {
     // This code is mostly taken from the examples:
     // https://github.com/yuvadm/tiva-c/blob/master/boards/dk-tm4c129x/gpio_jtag/gpio_jtag.c#L134
 
-    // Change PC0-3 into GPIO inputs. First open the lock and select
-    // the bits we want to modify in the GPIO commit register.
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOC);
     HWREG(GPIO_PORTC_BASE + GPIO_O_LOCK) = GPIO_LOCK_KEY;
     HWREG(GPIO_PORTC_BASE + GPIO_O_CR) = 0x0F;
 
@@ -34,4 +34,6 @@ void gpio_lock() {
     HWREG(GPIO_PORTC_BASE + GPIO_O_LOCK) = GPIO_LOCK_KEY;
     HWREG(GPIO_PORTC_BASE + GPIO_O_CR) = 0x00;
     HWREG(GPIO_PORTC_BASE + GPIO_O_LOCK) = 0;
+
+    SysCtlPeripheralDisable(SYSCTL_PERIPH_GPIOC);
 }

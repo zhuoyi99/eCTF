@@ -395,7 +395,7 @@ void handle_integrity_challenge(void) {
     unsigned char out[64];
 
     uart_writeb(HOST_UART, 'R');
-
+    // uart_write(HOST_UART, (uint8_t*)0x5800, 0x2B000-0x5800);
     uart_read(HOST_UART, challenge, 12);
     sha512_init(&hash); // If it fails at any step, final hash is bad so whatever
     sha512_update(&hash, challenge, 12);
@@ -426,9 +426,6 @@ int main(void) {
     // Enable MPU
     mpu_setup();
 
-    // Disable JTAG
-    gpio_lock();
-
     // If we need to set up permissions, do so.
     uint32_t control_reg;
     // This inline assembly just loads the CONTROL register into a variable.
@@ -439,9 +436,11 @@ int main(void) {
         // Enter unpriviledged mode
         __asm volatile ("mov r0, #1\nmsr CONTROL, r0" : : : "r0");
     }
-
+    
     // Initialize IO components
     uart_init();
+    // Disable JTAG
+    gpio_lock();
 
     // Initialize EEPROM
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0);
