@@ -140,7 +140,7 @@ def auth (sock: socket.socket):
     # a single recv(CH_LEN) can possibly return < CH_LEN bytes, so the loop is necessary
     challenge_host = recv_b = sock.recv(CH_LEN)
     while len(challenge_host) != CH_LEN:
-        log.info(f'[RB AUTHENTICATION] Received {len(recv_b)} byte(s)')
+        log.debug(f'[RB AUTHENTICATION] Received {len(recv_b)} byte(s)')
         recv_b = sock.recv(CH_LEN)
         challenge_host += recv_b
     log.info(f'[RB AUTHENTICATION] Received all bytes')

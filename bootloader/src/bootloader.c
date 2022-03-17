@@ -145,7 +145,7 @@ void handle_boot(void)
     for(uint32_t i = 0; i < size; i += 16) {
         AES_CBC_decrypt_buffer(&ctx, (uint8_t*)FIRMWARE_BOOT_PTR + i, 16, mask + mask_ofs);
         mask_ofs++;
-        mask_ofs %= RAND_BUF_LEN;
+        mask_ofs %= (RAND_BUF_LEN - 6);
     }
 
     // Verify firmware signature
@@ -437,10 +437,11 @@ int main(void) {
         __asm volatile ("mov r0, #1\nmsr CONTROL, r0" : : : "r0");
     }
     
-    // Initialize IO components
-    uart_init();
     // Disable JTAG
     gpio_lock();
+
+    // Initialize IO components
+    uart_init();
 
     // Initialize EEPROM
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0);

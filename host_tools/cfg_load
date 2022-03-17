@@ -69,6 +69,11 @@ def load_configuration(socket_number: int, config_file: Path):
         
         # Send Configuration IV
         sock.sendall(config_iv)
+
+        # Waiting for confirmation again to prevent buffering problems :(
+        response = sock.recv(1)
+        if response != RESP_OK:
+            exit(f"ERROR: Bootloader responded with {repr(response)}")
         
         # Send packets
         log.info("Sending configuration packets...")

@@ -38,7 +38,7 @@ __attribute__((section(".data"))) void cfg_decrypt(uint8_t* configuration_storag
         
         AES_CBC_decrypt_buffer(ctx, inbuf, cur_size, mask + mask_ofs);
         mask_ofs += 2;
-        mask_ofs %= RAND_BUF_LEN;
+        mask_ofs %= (RAND_BUF_LEN - 6);
 
         flash_erase_page_unsafe((uint32_t)configuration_storage);
         flash_write_unsafe((uint32_t*)inbuf, (uint32_t)configuration_storage, FLASH_PAGE_SIZE/4);

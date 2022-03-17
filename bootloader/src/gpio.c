@@ -15,6 +15,7 @@ void gpio_lock() {
     // https://github.com/yuvadm/tiva-c/blob/master/boards/dk-tm4c129x/gpio_jtag/gpio_jtag.c#L134
 
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOC);
+    while(!(SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOC)));
     HWREG(GPIO_PORTC_BASE + GPIO_O_LOCK) = GPIO_LOCK_KEY;
     HWREG(GPIO_PORTC_BASE + GPIO_O_CR) = 0x0F;
 

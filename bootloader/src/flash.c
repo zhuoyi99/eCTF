@@ -295,6 +295,9 @@ __attribute__((section(".data"))) void handle_configure_write(uint8_t* config_si
     // Save signature
     flash_write_unsafe((uint32_t*)config_signature, CONFIGURATION_SIG_PTR, ED_SIGNATURE_SIZE/4);
 
+    // Acknowledge
+    uart_writeb(HOST_UART, FRAME_OK);
+
     // Retrieve configuration
     load_data_unsafe(HOST_UART, CONFIGURATION_STORAGE_PTR, size, CONFIGURATION_MAX_SIZE);
 
