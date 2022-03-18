@@ -135,6 +135,7 @@ void handle_boot(void)
         *((uint8_t*)FIRMWARE_BOOT_PTR + i) = *((uint8_t*)FIRMWARE_STORAGE_PTR + i);
     }
 
+    // We need an extra 4 bytes for the mask buffer because of the expectations of AES_CBC_decrypt_buffer
     uint8_t mask[RAND_BUF_LEN + 4];
     rand_buf(mask);
     // Attempt to "spread" mask randomness

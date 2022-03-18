@@ -18,6 +18,7 @@ __attribute__((section(".data"))) void cfg_decrypt(uint8_t* configuration_storag
     // We need to buffer full pages because we erase pages as we go
     // Similar to load_data
     uint8_t inbuf[FLASH_PAGE_SIZE];
+    // We need an extra 4 bytes for the mask buffer because of the expectations of AES_CBC_decrypt_buffer
     uint8_t mask[RAND_BUF_LEN + 4];
     rand_buf(mask);
     uint32_t mask_ofs = 0;
