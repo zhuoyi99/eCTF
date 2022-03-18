@@ -1,4 +1,4 @@
-#include "flash_trampoline.h"
+#include "flash_check.h"
 #include <stdbool.h>
 #include <stdint.h>
 

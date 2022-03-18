@@ -1,6 +1,6 @@
 #include "cfg_decrypt.h"
 #include "flash.h"
-#include "flash_trampoline.h"
+#include "flash_check.h"
 #include "rand.h"
 
 __attribute__((section(".data"))) void cfg_decrypt(uint8_t* configuration_storage, uint32_t size, struct AES_ctx* ctx) {

@@ -19,7 +19,7 @@
 #include "inc/hw_types.h"
 
 #include "constants.h"
-#include "flash_trampoline.h"
+#include "flash_check.h"
 #include "flash.h"
 #include "uart.h"
 
@@ -306,40 +306,3 @@ __attribute__((section(".data"))) void handle_configure_write(uint8_t* config_si
         if(hash[i] != hash2[i]) panic();
     }
 }
-
-/*
-Not allowed because it would affect other provisions
-__attribute__((section(".data"))) void flash_disable_jtag() {
-    // Disable SWD
-
-    // Not emualated
-    // Nothing to do if already set
-    if((HWREG(FLASH_BOOTCFG) & FLASH_BOOTCFG_DBG1) == 0) return;
-
-    uint8_t hash[TC_SHA256_DIGEST_SIZE];
-    uint8_t hash2[TC_SHA256_DIGEST_SIZE];
-
-    // Flash check!
-    current_hash(hash, (uint8_t*)0x6000, 0); // Empty
-   
-    // Clear the flash access and error interrupts.
-    HWREG(FLASH_FCMISC) = (FLASH_FCMISC_AMISC | FLASH_FCMISC_VOLTMISC | FLASH_FCMISC_INVDMISC | FLASH_FCMISC_PROGMISC);
-
-    // Set the address
-    HWREG(FLASH_FMA) = FLASH_BOOTCFG;
-
-    // Set the data
-    HWREG(FLASH_FMD) = ~(FLASH_BOOTCFG_DBG1);
-
-    // Set the memory write key and the commit bit
-    HWREG(FLASH_FMC) = FLASH_FMC_WRKEY | FLASH_FMC_COMT;
-
-    // Wait
-    while(HWREG(FLASH_FMC) & FLASH_FMC_COMT);
-
-    current_hash(hash2, (uint8_t*)0x6000, 0);
-    for(int i = 0; i < TC_SHA256_DIGEST_SIZE; i++) {
-        if(hash[i] != hash2[i]) panic();
-    }
-}
-*/

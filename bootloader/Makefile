@@ -124,7 +124,7 @@ arg_check:
 ${COMPILER}/bootloader.axf: arg_check
 ${COMPILER}/bootloader.axf: ${COMPILER}/cfg_decrypt.o
 ${COMPILER}/bootloader.axf: ${COMPILER}/flash.o
-${COMPILER}/bootloader.axf: ${COMPILER}/flash_trampoline.o
+${COMPILER}/bootloader.axf: ${COMPILER}/flash_check.o
 ${COMPILER}/bootloader.axf: ${COMPILER}/gpio.o
 ${COMPILER}/bootloader.axf: ${COMPILER}/mpu.o
 ${COMPILER}/bootloader.axf: ${COMPILER}/rand.o

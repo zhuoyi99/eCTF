@@ -1,7 +1,6 @@
-#ifndef FLASH_TRAMPOLINE_H
-#define FLASH_TRAMPOLINE_H
+#ifndef FLASH_CHECK_H
+#define FLASH_CHECK_H
 
-// #include <tinycrypt/sha256.h>
 #include <sha256.h>
 #include <stdint.h>
 #define TC_SHA256_DIGEST_SIZE 32

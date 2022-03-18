@@ -4,7 +4,7 @@ This repository contains our implementation of the SAFFIRe bootloader with secur
 Here is a listing of added security features:
 - [Authentication](documentation/authentication.md) - the board authenticates host tools before allowing readback
 - [Encryption](documentation/encryption.md) - the firmware and configuration file are encrypted with AES
-- [Flash Security](documentation/flash_trampoline.md) - all flash writes are done with code execution in SRAM, and flash memory is hashed before/after the write
+- [Flash Security](documentation/flash_check.md) - all flash writes are done with code execution in SRAM, and flash memory is hashed before/after the write
 - [Integrity Checking](documentation/integrity.md) - all host tools attempt to verify integrity of bootloader before communicating further
 - [Memory Protection](documentation/mpu.md) - no-execute memory protection is applied to flash regions
 - [Layout Randomization](documentation/randomization.md) - memory layout is randomized on boot

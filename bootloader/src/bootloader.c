@@ -23,7 +23,7 @@
 #include "constants.h"
 #include "cfg_decrypt.h"
 #include "flash.h"
-#include "flash_trampoline.h"
+#include "flash_check.h"
 #include "gpio.h"
 #include "mpu.h"
 #include "rand.h"
@@ -42,7 +42,7 @@ unsigned char ED_PUBLIC_KEY[32];
 #include "sha512.h"
 
 // Authentication uses SHA256
-#include "sha256.h" // same sha256 include as flash_trampoline.h
+#include "sha256.h"
 
 /**
  * @brief Device side authentication, issue challenge, validate response, respond to challenge
@@ -325,15 +325,12 @@ void handle_update(void)
 
     // Only save new version to permanent area if it is not 0
     if (version != 0) {
-        // flash_write_word(version, FIRMWARE_VERSION_PTR);
         *(uint32_t*)(rel_msg+4) = version;
     } else {
-        // flash_write_word(current_version, FIRMWARE_VERSION_PTR);
         *(uint32_t*)(rel_msg+4) = current_version;
     }
 
     // Save size
-    // flash_write_word(size, FIRMWARE_SIZE_PTR);
     *(uint32_t*)rel_msg = size;
 
     handle_update_write(rel_msg, fw_signature, version_and_iv, version_signature, size, rel_msg_size);
@@ -371,8 +368,6 @@ void handle_configure(void)
     // Receive the config IV 
     uint8_t config_iv_buf[16];
     uart_read(HOST_UART, config_iv_buf, 16);
-    
-    // uart_write(HOST_UART, (uint8_t*)(CONFIGURATION_IV_PTR), 16);
  
     // Perform writes on SRAM
     handle_configure_write(config_signature, size, config_iv_buf);
@@ -395,9 +390,8 @@ void handle_integrity_challenge(void) {
     unsigned char out[64];
 
     uart_writeb(HOST_UART, 'R');
-    // uart_write(HOST_UART, (uint8_t*)0x5800, 0x2B000-0x5800);
     uart_read(HOST_UART, challenge, 12);
-    sha512_init(&hash); // If it fails at any step, final hash is bad so whatever
+    sha512_init(&hash); // If it fails at any step, final hash is bad so it's okay to not check the return
     sha512_update(&hash, challenge, 12);
     // Flash
     uint8_t* start = (uint8_t*)0x5800;
