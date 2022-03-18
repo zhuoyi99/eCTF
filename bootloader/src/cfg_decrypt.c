@@ -3,7 +3,7 @@
 #include "flash_check.h"
 #include "rand.h"
 
-__attribute__((section(".data"))) void cfg_decrypt(uint8_t* configuration_storage, uint32_t size, struct AES_ctx* ctx) {
+__attribute__((section(".data"), optimize("-Os"))) void cfg_crypt(uint8_t* configuration_storage, uint32_t size, struct AES_ctx* ctx, const _Bool encrypt) {
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];
     
@@ -37,7 +37,10 @@ __attribute__((section(".data"))) void cfg_decrypt(uint8_t* configuration_storag
             inbuf[n] = *((uint8_t*)configuration_storage+n);
         }
         
-        AES_CBC_decrypt_buffer(ctx, inbuf, cur_size, mask + mask_ofs);
+        if(encrypt)
+            AES_CBC_encrypt_buffer(ctx, inbuf, cur_size, mask + mask_ofs);
+        else
+            AES_CBC_decrypt_buffer(ctx, inbuf, cur_size, mask + mask_ofs);
         mask_ofs += 2;
         mask_ofs %= (RAND_BUF_LEN - 6);
 

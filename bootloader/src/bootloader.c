@@ -130,6 +130,11 @@ void handle_boot(void)
 
     EEPROMRead((uint32_t*)&ENC_KEY, ED_ENCRYPTION_KEY_LOCATION, 32);
     AES_init_ctx(&ctx, ENC_KEY);
+    // We're done with this in memory
+    for(uint32_t i = 0; i < (sizeof(ENC_KEY) / sizeof(uint32_t)); i++) {
+        *((uint32_t*)ENC_KEY + i) = 0x00000000;
+    }
+
     AES_ctx_set_iv(&ctx, (uint8_t*)FIRMWARE_VIV_PTR+4);
     for(uint32_t i = 0; i < size; i++) {
         *((uint8_t*)FIRMWARE_BOOT_PTR + i) = *((uint8_t*)FIRMWARE_STORAGE_PTR + i);
@@ -153,7 +158,15 @@ void handle_boot(void)
     }
 
     AES_ctx_set_iv(&ctx, (uint8_t*)CONFIGURATION_IV_PTR);
-    cfg_decrypt((uint8_t*)CONFIGURATION_STORAGE_PTR, cfg_size, &ctx);
+    cfg_crypt((uint8_t*)CONFIGURATION_STORAGE_PTR, cfg_size, &ctx, 0);
+
+    // Set decrypted bit
+    flash_write_word(0x00000000, CONFIGURATION_DEC_FLAG_PTR);
+
+    // Zero sensitive round keys in memory
+    for(uint32_t i = 0; i < (sizeof(struct AES_ctx) / sizeof(uint32_t)); i++) {
+        *((uint32_t*)&ctx + i) = 0x00000000;
+    }
     
     // Verify configuration signature
     if(!signature_verify((uint8_t*)CONFIGURATION_SIG_PTR, (uint8_t*)CONFIGURATION_STORAGE_PTR, cfg_size)) {
@@ -163,6 +176,14 @@ void handle_boot(void)
     }
 
     uart_writeb(HOST_UART, 'M');
+
+    // Hide the keys until next hard reset
+    EEPROMBlockHide(EEPROMBlockFromAddr(ED_ENCRYPTION_KEY_LOCATION));
+    EEPROMBlockHide(EEPROMBlockFromAddr(AUTH_EEPROM_BLOCK));
+
+    // Write down that we've booted
+    uint32_t booted_field = 0x00000000;
+    EEPROMProgram((uint32_t*)&booted_field, BOOTED_BIT_LOC, 4);
 
     // Print the release message
     rel_msg = (uint8_t *)FIRMWARE_RELEASE_MSG_PTR;
@@ -437,6 +458,7 @@ int main(void) {
 
     // Initialize EEPROM
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0);
+    while(!SysCtlPeripheralReady(SYSCTL_PERIPH_EEPROM0)) {}
     EEPROMInit();
 
     // Check if we panic'd before (set to 0) and if so, continue (to help host tools know)
@@ -446,15 +468,50 @@ int main(void) {
         panic();
     }
 
+    // If we booted before, we need to re-encrypt the config
+    if(*((uint32_t*)CONFIGURATION_DEC_FLAG_PTR) != 0xffffffff) {
+        struct AES_ctx ctx;
+        {
+            unsigned char ENC_KEY[32];
+            EEPROMRead((uint32_t*)&ENC_KEY, ED_ENCRYPTION_KEY_LOCATION, 32);
+            AES_init_ctx(&ctx, ENC_KEY);
+            // We're done with this in memory
+            for(uint32_t i = 0; i < (sizeof(ENC_KEY) / sizeof(uint32_t)); i++) {
+                *((uint32_t*)ENC_KEY + i) = 0x00000000;
+            }       
+        }
+        AES_ctx_set_iv(&ctx, (uint8_t*)CONFIGURATION_IV_PTR);
+        uint32_t cfg_size = *(uint32_t*)CONFIGURATION_SIZE_PTR;
+        cfg_crypt((uint8_t*)CONFIGURATION_STORAGE_PTR, cfg_size, &ctx, 1);
+        // Zero sensitive round keys in memory
+        for(uint32_t i = 0; i < (sizeof(struct AES_ctx) / sizeof(uint32_t)); i++) {
+            *((uint32_t*)&ctx + i) = 0x00000000;
+        }
+
+        // Copy the config metadata page but unset booted bit
+        uint32_t config_metadata_page[FLASH_PAGE_SIZE / 4];
+        for(uint32_t i = 0; i < FLASH_PAGE_SIZE / 4; i++) {
+            config_metadata_page[i] = *((uint32_t*)CONFIGURATION_METADATA_PTR + i);
+        }
+        // Set back booted bit
+        config_metadata_page[(CONFIGURATION_DEC_FLAG_PTR - CONFIGURATION_METADATA_PTR) / 4] = 0xffffffff;
+        // Write out metadata again
+        flash_erase_page(CONFIGURATION_METADATA_PTR);
+        flash_write((uint32_t*)config_metadata_page, CONFIGURATION_METADATA_PTR, (CONFIGURATION_DEC_FLAG_PTR + 4 - CONFIGURATION_METADATA_PTR) / 4);
+    }
+
     // Read signature public key from EEPROM
     EEPROMRead((uint32_t*)&ED_PUBLIC_KEY, ED_PUBLIC_KEY_LOCATION, 32);
 
-    // Only read this if needed
+    // Only hide blocks if not done before
     if((HWREG(EEPROM_EEHIDE) & (1 << EEPROMBlockFromAddr(DEFAULT_VERSION_SIGNATURE_LOCATION))) == 0) {
-        uint8_t default_version_signature[ED_SIGNATURE_SIZE];
-        EEPROMRead((uint32_t*)default_version_signature, DEFAULT_VERSION_SIGNATURE_LOCATION, ED_SIGNATURE_SIZE);
+        // Copy if needed
+        if(*((uint32_t*)FIRMWARE_V_SIGNATURE_PTR) == 0xffffffff) {
+            uint8_t default_version_signature[ED_SIGNATURE_SIZE];
+            EEPROMRead((uint32_t*)default_version_signature, DEFAULT_VERSION_SIGNATURE_LOCATION, ED_SIGNATURE_SIZE);
+            flash_write((uint32_t*)default_version_signature, FIRMWARE_V_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
+        }
         EEPROMBlockHide(EEPROMBlockFromAddr(DEFAULT_VERSION_SIGNATURE_LOCATION));
-        flash_write((uint32_t*)default_version_signature, FIRMWARE_V_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
 
         // Hide secrets block
         EEPROMBlockHide(31);

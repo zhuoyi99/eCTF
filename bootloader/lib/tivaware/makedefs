@@ -147,9 +147,10 @@ OBJCOPY=${PREFIX}-objcopy
 # variable is set.
 #
 ifdef DEBUG
-CFLAGS+=-g -D DEBUG -O0
+CFLAGS+=-g -D DEBUG -Og -fstack-check 
+else
+CFLAGS+=-O3 -fno-tree-loop-distribute-patterns 
 endif
-
 
 #
 # Add the tool specific CFLAGS.

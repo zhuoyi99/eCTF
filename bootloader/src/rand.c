@@ -8,11 +8,11 @@
  */
 __attribute__((section(".data"))) void inc_counter (uint8_t *counter) {
     uint8_t *loc = counter + RAND_CTR_LEN - 1;
-    while (loc != counter - 1) {
-	(*loc)++;
-	if (*loc != 0x0) {
-            break;
-	}
+    while (loc >= counter) {
+        (*loc)++;
+        if (*loc != 0x0) {
+                break;
+        }
         --loc;
     }
 

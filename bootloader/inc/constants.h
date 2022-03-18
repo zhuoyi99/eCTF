@@ -18,7 +18,8 @@
  *      Size:    0x0002FC00 : 0x0002FC40 (1KB = 4B + 60B of padding)
  *      Sig:     0x0002FC40 : 0x0002FC80 (64B, ED_SIGNATURE_SIZE)
  *      IV:      0x0002FC80 : 0x0002FC90 (16B)
- *      Padding: 0x0002FC90 : 0x00030000 (880B)
+ *      Dec Flag:0x0002FC90 : 0x0002FC94 (4B)
+ *      Padding: 0x0002FC94 : 0x00030000 (876B)
  *      Cfg:     0x00030000 : 0x00040000 (64KB)
  */
 #define FIRMWARE_BASE_PTR          ((uint32_t)(FLASH_START + 0x0002B000))
@@ -39,6 +40,7 @@
 #define CONFIGURATION_SIZE_PTR     ((uint32_t)(CONFIGURATION_METADATA_PTR + 0))
 #define CONFIGURATION_SIG_PTR      ((uint32_t)(CONFIGURATION_METADATA_PTR + 0x40))
 #define CONFIGURATION_IV_PTR       ((uint32_t)(CONFIGURATION_METADATA_PTR + 0x80))
+#define CONFIGURATION_DEC_FLAG_PTR ((uint32_t)(CONFIGURATION_METADATA_PTR + 0x90))
 #define CONFIGURATION_STORAGE_PTR  ((uint32_t)(CONFIGURATION_METADATA_PTR + FLASH_PAGE_SIZE))
 
 // Maximum sizes
@@ -73,6 +75,9 @@
 
 // Panic bit on EEPROM
 #define PANIC_BIT_LOC (5 * EEPROM_BLOCK)
+
+// Booted bit on EEPROM
+#define BOOTED_BIT_LOC (6 * EEPROM_BLOCK)
 
 // Firmware update constants
 #define FRAME_OK 0x00

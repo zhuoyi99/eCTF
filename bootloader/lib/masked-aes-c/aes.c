@@ -116,7 +116,6 @@ static const uint8_t rsbox[256] = {
     0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
     0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d};
 
-/* Unused
 static const uint8_t mul_02[256] = {
     0x00, 0x02, 0x04, 0x06, 0x08, 0x0a, 0x0c, 0x0e, 0x10, 0x12, 0x14, 0x16, 0x18, 0x1a, 0x1c, 0x1e,
     0x20, 0x22, 0x24, 0x26, 0x28, 0x2a, 0x2c, 0x2e, 0x30, 0x32, 0x34, 0x36, 0x38, 0x3a, 0x3c, 0x3e,
@@ -152,9 +151,8 @@ static const uint8_t mul_03[256] = {
     0x6b, 0x68, 0x6d, 0x6e, 0x67, 0x64, 0x61, 0x62, 0x73, 0x70, 0x75, 0x76, 0x7f, 0x7c, 0x79, 0x7a,
     0x3b, 0x38, 0x3d, 0x3e, 0x37, 0x34, 0x31, 0x32, 0x23, 0x20, 0x25, 0x26, 0x2f, 0x2c, 0x29, 0x2a,
     0x0b, 0x08, 0x0d, 0x0e, 0x07, 0x04, 0x01, 0x02, 0x13, 0x10, 0x15, 0x16, 0x1f, 0x1c, 0x19, 0x1a};
-*/
 
-const uint8_t mul_09[256]={
+static const uint8_t mul_09[256]={
 	0x00,0x09,0x12,0x1b,0x24,0x2d,0x36,0x3f,0x48,0x41,0x5a,0x53,0x6c,0x65,0x7e,0x77,
 	0x90,0x99,0x82,0x8b,0xb4,0xbd,0xa6,0xaf,0xd8,0xd1,0xca,0xc3,0xfc,0xf5,0xee,0xe7,
 	0x3b,0x32,0x29,0x20,0x1f,0x16,0x0d,0x04,0x73,0x7a,0x61,0x68,0x57,0x5e,0x45,0x4c,
@@ -172,7 +170,7 @@ const uint8_t mul_09[256]={
 	0xa1,0xa8,0xb3,0xba,0x85,0x8c,0x97,0x9e,0xe9,0xe0,0xfb,0xf2,0xcd,0xc4,0xdf,0xd6,
 	0x31,0x38,0x23,0x2a,0x15,0x1c,0x07,0x0e,0x79,0x70,0x6b,0x62,0x5d,0x54,0x4f,0x46
 };
-const uint8_t mul_11[256]={
+static const uint8_t mul_11[256]={
 	0x00,0x0b,0x16,0x1d,0x2c,0x27,0x3a,0x31,0x58,0x53,0x4e,0x45,0x74,0x7f,0x62,0x69,
 	0xb0,0xbb,0xa6,0xad,0x9c,0x97,0x8a,0x81,0xe8,0xe3,0xfe,0xf5,0xc4,0xcf,0xd2,0xd9,
 	0x7b,0x70,0x6d,0x66,0x57,0x5c,0x41,0x4a,0x23,0x28,0x35,0x3e,0x0f,0x04,0x19,0x12,
@@ -190,7 +188,7 @@ const uint8_t mul_11[256]={
 	0x7a,0x71,0x6c,0x67,0x56,0x5d,0x40,0x4b,0x22,0x29,0x34,0x3f,0x0e,0x05,0x18,0x13,
 	0xca,0xc1,0xdc,0xd7,0xe6,0xed,0xf0,0xfb,0x92,0x99,0x84,0x8f,0xbe,0xb5,0xa8,0xa3
 };
-const uint8_t mul_13[256]={
+static const uint8_t mul_13[256]={
 	0x00,0x0d,0x1a,0x17,0x34,0x39,0x2e,0x23,0x68,0x65,0x72,0x7f,0x5c,0x51,0x46,0x4b,
 	0xd0,0xdd,0xca,0xc7,0xe4,0xe9,0xfe,0xf3,0xb8,0xb5,0xa2,0xaf,0x8c,0x81,0x96,0x9b,
 	0xbb,0xb6,0xa1,0xac,0x8f,0x82,0x95,0x98,0xd3,0xde,0xc9,0xc4,0xe7,0xea,0xfd,0xf0,
@@ -208,7 +206,7 @@ const uint8_t mul_13[256]={
 	0x0c,0x01,0x16,0x1b,0x38,0x35,0x22,0x2f,0x64,0x69,0x7e,0x73,0x50,0x5d,0x4a,0x47,
 	0xdc,0xd1,0xc6,0xcb,0xe8,0xe5,0xf2,0xff,0xb4,0xb9,0xae,0xa3,0x80,0x8d,0x9a,0x97
 };
-const uint8_t mul_14[256]={
+static const uint8_t mul_14[256]={
 	0x00,0x0e,0x1c,0x12,0x38,0x36,0x24,0x2a,0x70,0x7e,0x6c,0x62,0x48,0x46,0x54,0x5a,
 	0xe0,0xee,0xfc,0xf2,0xd8,0xd6,0xc4,0xca,0x90,0x9e,0x8c,0x82,0xa8,0xa6,0xb4,0xba,
 	0xdb,0xd5,0xc7,0xc9,0xe3,0xed,0xff,0xf1,0xab,0xa5,0xb7,0xb9,0x93,0x9d,0x8f,0x81,
@@ -232,7 +230,7 @@ const uint8_t mul_14[256]={
 static const uint8_t Rcon[11] = {
     0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36};
 
-// static uint8_t SboxMasked[256];
+static uint8_t SboxMasked[256];
 static uint8_t rSboxMasked[256];
 
 /*****************************************************************************/
@@ -240,14 +238,14 @@ static uint8_t rSboxMasked[256];
 /*****************************************************************************/
 
 // I get to re-implement these
-__attribute__((section(".data"))) void my_memcpy(uint8_t* dest, const uint8_t* src, uint32_t n) {
+__attribute__((section(".data"), optimize("-Os"))) void my_memcpy(uint8_t* dest, const uint8_t* src, uint32_t n) {
     while(n > 0) {
         *dest++ = *src++;
         n--;
     }
 }
 
-__attribute__((section(".data"))) void my_memset(uint8_t* s, uint8_t c, uint32_t n) {
+__attribute__((section(".data"), optimize("-Os"))) void my_memset(uint8_t* s, uint8_t c, uint32_t n) {
     while(n > 0) {
         *s++ = c;
         n--;
@@ -260,15 +258,13 @@ __attribute__((section(".data"))) void my_memset(uint8_t* s, uint8_t c, uint32_t
 * [y]      [1  1  2  3]    [c]
 * [z]      [3  1  1  2]    [d]
 Galois so + = XOR */
-/* Unused for decryption
-static void calcMixColmask(uint8_t mask[10])
+__attribute__((section(".data"), optimize("-Os"))) static void calcMixColmask(uint8_t mask[10])
 {
   mask[6] = mul_02[mask[0]] ^ mul_03[mask[1]] ^ mask[2]         ^ mask[3];
   mask[7] = mask[0]         ^ mul_02[mask[1]] ^ mul_03[mask[2]] ^ mask[3];
   mask[8] = mask[0]         ^ mask[1]         ^ mul_02[mask[2]] ^ mul_03[mask[3]];
   mask[9] = mul_03[mask[0]] ^ mask[1]         ^ mask[2]         ^ mul_02[mask[3]];
 }
-*/
 
 /* Normal Inverse Mix Columns:
 * [w]      [0E  0B  0D  09]    [a]
@@ -276,7 +272,7 @@ static void calcMixColmask(uint8_t mask[10])
 * [y]      [0D  09  0E  0B]    [c]
 * [z]      [0B  0D  09  0E]    [d]
 Galois so + = XOR */
-__attribute__((section(".data"))) static void calcInvMixColmask(uint8_t mask[10])
+__attribute__((section(".data"), optimize("-Os"))) static void calcInvMixColmask(uint8_t mask[10])
 {
 	mask[6]	=	mul_14[mask[0]]	^ mul_11[mask[1]] ^ mul_13[mask[2]]	^ mul_09[mask[3]];
 	mask[7]	=	mul_09[mask[0]]	^ mul_14[mask[1]]	^ mul_11[mask[2]]	^ mul_13[mask[3]];
@@ -289,7 +285,7 @@ __attribute__((section(".data"))) static void calcInvMixColmask(uint8_t mask[10]
 //	[....]	EXOR		[m2^m6|m2^m6|m2^m6|m2^m6]
 //	[....]				  [m3^m7|m3^m7|m3^m7|m3^m7]
 //	[....]				  [m4^m8|m4^m8|m5^m8|m4^m8]
-__attribute__((section(".data"))) static void remask(state_t * s, uint8_t m1, uint8_t m2, uint8_t m3, uint8_t m4, uint8_t m5, uint8_t m6, uint8_t m7, uint8_t m8)
+__attribute__((section(".data"), optimize("-Os"))) static void remask(state_t * s, uint8_t m1, uint8_t m2, uint8_t m3, uint8_t m4, uint8_t m5, uint8_t m6, uint8_t m7, uint8_t m8)
 {
   for (int i = 0; i < 4; i++)
   {
@@ -301,24 +297,22 @@ __attribute__((section(".data"))) static void remask(state_t * s, uint8_t m1, ui
 }
 
 //Calculate the the invSbox to change from Mask m to Mask m'
-/*
-static void calcSboxMasked(uint8_t mask[10])
+__attribute__((section(".data"), optimize("-Os"))) static void calcSboxMasked(uint8_t mask[10])
 {
   for (int i = 0; i < 256; i++){
     SboxMasked[i ^ mask[4]] = sbox[i] ^ mask[5];
   }
 }
-*/
 
 //Calculate the the invReverseSbox to change from Mask m to Mask m'
-__attribute__((section(".data"))) static void calcrSboxMasked(uint8_t mask[10])
+__attribute__((section(".data"), optimize("-Os"))) static void calcrSboxMasked(uint8_t mask[10])
 {
   for (int i = 0; i < 256; i++){
     rSboxMasked[i ^ mask[4]] = rsbox[i] ^ mask[5];
   }
 }
 
-__attribute__((section(".data"))) static void InitMaskingDecrypt(const uint8_t *RoundKey, uint8_t * RoundKeyMasked, uint8_t * mask)
+__attribute__((section(".data"), optimize("-Os"))) static void InitMaskingDecrypt(const uint8_t *RoundKey, uint8_t * RoundKeyMasked, uint8_t * mask)
 {
   my_memcpy(RoundKeyMasked, RoundKey, AES_keyExpSize);
 
@@ -337,16 +331,9 @@ __attribute__((section(".data"))) static void InitMaskingDecrypt(const uint8_t *
   }
 }
 
-/* No ecryption
-static void InitMaskingEncrypt(const uint8_t *RoundKey, uint8_t *RoundKeyMasked, uint8_t mask[10])
+__attribute__((section(".data"), optimize("-Os"))) static void InitMaskingEncrypt(const uint8_t *RoundKey, uint8_t *RoundKeyMasked, uint8_t mask[10])
 {
   my_memcpy(RoundKeyMasked, RoundKey, AES_keyExpSize);
-
-  srand(time(NULL));
-  //Randomly generate the masks: m1 m2 m3 m4 m m'
-  for (uint8_t i = 0; i < 6; i++){
-    mask[i] = rand() % 0xFF;
-  }
 
   //Calculate m1',m2',m3',m4'
   calcMixColmask(mask);
@@ -367,7 +354,7 @@ static void InitMaskingEncrypt(const uint8_t *RoundKey, uint8_t *RoundKeyMasked,
 
 // The SubBytes Function Substitutes the values in the
 // state matrix with values in an masked S-box.
-static void SubBytesMasked(state_t *state)
+__attribute__((section(".data"), optimize("-Os"))) static void SubBytesMasked(state_t *state)
 {
   uint8_t i, j;
   for (i = 0; i < 4; ++i)
@@ -378,11 +365,10 @@ static void SubBytesMasked(state_t *state)
     }
   }
 }
-*/
 
 // This function adds the masked round key to state.
 // The round key is added to the state by an XOR function.
-__attribute__((section(".data"))) static void AddRoundKeyMasked(uint8_t round, state_t *state, const uint8_t * RoundKeyMasked) //, const uint8_t* RoundKey)
+__attribute__((section(".data"), optimize("-Os"))) static void AddRoundKeyMasked(uint8_t round, state_t *state, const uint8_t * RoundKeyMasked) //, const uint8_t* RoundKey)
 {
   uint8_t i, j;
   for(i = 0; i < 4; i++){
@@ -405,8 +391,8 @@ static uint8_t getSBoxInvert(uint8_t num)
 {
   return rsbox[num];
 }
-*/
 #define getSBoxInvert(num) (rsbox[(num)])
+*/
 
 // This function produces Nb(Nr+1) round keys. The round keys are used in each round to decrypt the states.
 static void KeyExpansion(uint8_t *RoundKey, const uint8_t *Key)
@@ -498,9 +484,9 @@ void AES_ctx_set_iv(struct AES_ctx *ctx, const uint8_t *iv)
 }
 #endif
 
-/* No encryption
 // This function adds the round key to state.
 // The round key is added to the state by an XOR function.
+/*
 static void AddRoundKey(uint8_t round, state_t *state, const uint8_t *RoundKey)
 {
   uint8_t i, j;
@@ -512,9 +498,11 @@ static void AddRoundKey(uint8_t round, state_t *state, const uint8_t *RoundKey)
     }
   }
 }
+*/
 
 // The SubBytes Function Substitutes the values in the
 // state matrix with values in an S-box.
+/*
 static void SubBytes(state_t *state)
 {
   uint8_t i, j;
@@ -526,11 +514,12 @@ static void SubBytes(state_t *state)
     }
   }
 }
+*/
 
 // The ShiftRows() function shifts the rows in the state to the left.
 // Each row is shifted with different offset.
 // Offset = Row number. So the first row is not shifted.
-static void ShiftRows(state_t *state)
+__attribute__((section(".data"), optimize("-Os"))) static void ShiftRows(state_t *state)
 {
   uint8_t temp;
 
@@ -557,14 +546,13 @@ static void ShiftRows(state_t *state)
   (*state)[2][3] = (*state)[1][3];
   (*state)[1][3] = temp;
 }
-*/
-__attribute__((section(".data"))) static uint8_t xtime(uint8_t x)
+
+__attribute__((section(".data"), optimize("-Os"))) static uint8_t xtime(uint8_t x)
 {
   return ((x << 1) ^ (((x >> 7) & 1) * 0x1b));
 }
-/* No encryption
 // MixColumns function mixes the columns of the state matrix
-static void MixColumns(state_t *state)
+__attribute__((section(".data"), optimize("-Os"))) static void MixColumns(state_t *state)
 {
   uint8_t i;
   uint8_t Tmp, Tm, t;
@@ -586,7 +574,6 @@ static void MixColumns(state_t *state)
     (*state)[i][3] ^= Tm ^ Tmp;
   }
 }
-*/
 
 // Multiply is used to multiply numbers in the field GF(2^8)
 // Note: The last call to xtime() is unneeded, but often ends up generating a smaller binary
@@ -615,7 +602,7 @@ static uint8_t Multiply(uint8_t x, uint8_t y)
 // MixColumns function mixes the columns of the state matrix.
 // The method used to multiply may be difficult to understand for the inexperienced.
 // Please use the references to gain more information.
-__attribute__((section(".data"))) static void InvMixColumns(state_t *state)
+__attribute__((section(".data"), optimize("-Os"))) static void InvMixColumns(state_t *state)
 {
   int i;
   uint8_t a, b, c, d;
@@ -636,7 +623,7 @@ __attribute__((section(".data"))) static void InvMixColumns(state_t *state)
 // The SubBytes Function Substitutes the values in the
 // state matrix with values in an S-box.
 /*
-static void InvSubBytes(state_t *state)
+__attribute__((section(".data"), optimize("-Os"))) static void InvSubBytes(state_t *state)
 {
   uint8_t i, j;
   for (i = 0; i < 4; ++i)
@@ -651,7 +638,7 @@ static void InvSubBytes(state_t *state)
 
 // The SubBytes Function Substitutes the values in the
 // state matrix with values in an S-box.
-__attribute__((section(".data"))) static void InvSubBytesMasked(state_t *state)
+__attribute__((section(".data"), optimize("-Os"))) static void InvSubBytesMasked(state_t *state)
 {
   uint8_t i, j;
   for (i = 0; i < 4; ++i)
@@ -663,7 +650,7 @@ __attribute__((section(".data"))) static void InvSubBytesMasked(state_t *state)
   }
 }
 
-__attribute__((section(".data"))) static void InvShiftRows(state_t *state)
+__attribute__((section(".data"), optimize("-Os"))) static void InvShiftRows(state_t *state)
 {
   uint8_t temp;
 
@@ -692,13 +679,13 @@ __attribute__((section(".data"))) static void InvShiftRows(state_t *state)
 }
 #endif // #if (defined(CBC) && CBC == 1) || (defined(ECB) && ECB == 1)
 
-/* No encryption
 // Cipher is the main function that encrypts the PlainText.
-static void CipherMasked(state_t *state, const uint8_t *RoundKey)
+__attribute__((section(".data"), optimize("-Os"))) static void CipherMasked(state_t *state, const uint8_t *RoundKey, uint8_t* mask)
 {
-  uint8_t RoundKeyMasked[AES_keyExpSize] = {0};
-  uint8_t mask[10] = {0};
+  uint8_t RoundKeyMasked[AES_keyExpSize];
   uint8_t round = 0;
+
+  my_memset(RoundKeyMasked, 0, sizeof(RoundKeyMasked));
 
   InitMaskingEncrypt(RoundKey, RoundKeyMasked, mask);
 
@@ -743,6 +730,7 @@ static void CipherMasked(state_t *state, const uint8_t *RoundKey)
   AddRoundKeyMasked(Nr, state, RoundKeyMasked);
 }
 
+/*
 // Cipher is the main function that encrypts the PlainText.
 static void Cipher(state_t *state, const uint8_t *RoundKey)
 {
@@ -772,7 +760,7 @@ static void Cipher(state_t *state, const uint8_t *RoundKey)
 */
 
 #if (defined(CBC) && CBC == 1) || (defined(ECB) && ECB == 1)
-__attribute__((section(".data"))) static void InvCipherMasked(state_t *state, const uint8_t *RoundKey, uint8_t* mask)
+__attribute__((section(".data"), optimize("-Os"))) static void InvCipherMasked(state_t *state, const uint8_t *RoundKey, uint8_t* mask)
 {
   uint8_t RoundKeyMasked[AES_keyExpSize];
   my_memset(RoundKeyMasked, 0, AES_keyExpSize);
@@ -871,7 +859,7 @@ void AES_ECB_decrypt(const struct AES_ctx *ctx, uint8_t *buf)
 
 #if defined(CBC) && (CBC == 1)
 
-__attribute__((section(".data"))) static void XorWithIv(uint8_t *buf, const uint8_t *Iv)
+__attribute__((section(".data"), optimize("-Os"))) static void XorWithIv(uint8_t *buf, const uint8_t *Iv)
 {
   uint8_t i;
   for (i = 0; i < AES_BLOCKLEN; ++i) // The block in AES is always 128bit no matter the key size
@@ -880,8 +868,7 @@ __attribute__((section(".data"))) static void XorWithIv(uint8_t *buf, const uint
   }
 }
 
-/* No encryption
-void AES_CBC_encrypt_buffer(struct AES_ctx *ctx, uint8_t *buf, uint32_t length)
+__attribute__((section(".data"), optimize("-Os"))) void AES_CBC_encrypt_buffer(struct AES_ctx *ctx, uint8_t *buf, uint32_t length, uint8_t* mask)
 {
   uintptr_t i;
   uint8_t *Iv = ctx->Iv;
@@ -889,7 +876,7 @@ void AES_CBC_encrypt_buffer(struct AES_ctx *ctx, uint8_t *buf, uint32_t length)
   {
     XorWithIv(buf, Iv);
     #if defined(MASKED) && (MASKED == 1)
-      CipherMasked((state_t *)buf, ctx->RoundKey);
+      CipherMasked((state_t *)buf, ctx->RoundKey, mask);
     #else
       Cipher((state_t *)buf, ctx->RoundKey);
     #endif
@@ -899,9 +886,8 @@ void AES_CBC_encrypt_buffer(struct AES_ctx *ctx, uint8_t *buf, uint32_t length)
   // store Iv in ctx for next call
   my_memcpy(ctx->Iv, Iv, AES_BLOCKLEN);
 }
-*/
 
-__attribute__((section(".data"))) void AES_CBC_decrypt_buffer(struct AES_ctx *ctx, uint8_t *buf, uint32_t length, uint8_t* mask)
+__attribute__((section(".data"), optimize("-Os"))) void AES_CBC_decrypt_buffer(struct AES_ctx *ctx, uint8_t *buf, uint32_t length, uint8_t* mask)
 {
   uintptr_t i;
   uint8_t storeNextIv[AES_BLOCKLEN];
