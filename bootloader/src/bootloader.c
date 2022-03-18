@@ -399,7 +399,7 @@ void handle_integrity_challenge(void) {
     size = (uint8_t*)&_edata - (uint8_t*)&_data;
     sha256_update(&hash, start, size);
     sha256_final(&hash, out);
-    uart_write(HOST_UART, out, 32);
+    uart_write(HOST_UART, out, AUTH_DIGEST_LEN);
 }
 
 /**
