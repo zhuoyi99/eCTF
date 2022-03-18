@@ -225,8 +225,9 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
     // Clear signature page
     flash_erase_page_unsafe(FIRMWARE_SIGNATURE_PTR);
 
-    // Clear firmware metadata
+    // Clear firmware metadata pages
     flash_erase_page_unsafe(FIRMWARE_METADATA_PTR);
+    flash_erase_page_unsafe(FIRMWARE_METADATA_PTR + FLASH_PAGE_SIZE);
 
     // Save firmware signature
     flash_write_unsafe((uint32_t*)fw_signature, FIRMWARE_SIGNATURE_PTR, ED_SIGNATURE_SIZE/4);
@@ -240,7 +241,9 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
     // Write release message
     uint8_t *rel_msg_read_ptr = rel_msg;
     uint32_t rel_msg_write_ptr = FIRMWARE_METADATA_PTR;
-    uint32_t rem_bytes = rel_msg_size + 4 + 4;
+    // Add size for size / version num
+    rel_msg_size = rel_msg_size + 4 + 4;
+    uint32_t rem_bytes = rel_msg_size;
 
     // If release message goes outside of the first page, write the first full page
     if (rel_msg_size > FLASH_PAGE_SIZE) {
@@ -252,7 +255,6 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
         rem_bytes = rel_msg_size - FLASH_PAGE_SIZE;
         rel_msg_read_ptr = rel_msg + FLASH_PAGE_SIZE;
         rel_msg_write_ptr = FIRMWARE_RELEASE_MSG_PTR2;
-        flash_erase_page_unsafe(rel_msg_write_ptr);
     }
 
     // Program last or only page of release message

@@ -166,7 +166,7 @@ void handle_boot(void)
 
     // Print the release message
     rel_msg = (uint8_t *)FIRMWARE_RELEASE_MSG_PTR;
-    while (*rel_msg != 0) {
+    while (*rel_msg != 0 && (rel_msg < ((uint8_t*)FIRMWARE_RELEASE_MSG_PTR + 1024))) {
         uart_writeb(HOST_UART, *rel_msg);
         rel_msg++;
     }
@@ -252,7 +252,7 @@ void handle_update(void)
     uint32_t version = 0;
     uint32_t size = 0;
     uint32_t rel_msg_size = 0;
-    uint8_t rel_msg[1024 + 1 + 4 + 4]; // 1024 + terminator + version + size
+    uint8_t rel_msg[1025 + 1 + 4 + 4]; // 1025 + terminator + version + size
     uint8_t version_and_iv[20];
 
     // Acknowledge the host
@@ -287,7 +287,7 @@ void handle_update(void)
     uart_read(HOST_UART, version_signature, ED_SIGNATURE_SIZE);
     
     // Receive release message
-    rel_msg_size = uart_readline(HOST_UART, rel_msg + 8, 1024) + 1; // Include terminator
+    rel_msg_size = uart_readline(HOST_UART, rel_msg + 8, 1025) + 1; // Include terminator
 
     // Check the version signature (done after just so bytes read is constant)
     if(!signature_verify(version_signature, (uint8_t*)version_and_iv, sizeof(version_and_iv))) {
