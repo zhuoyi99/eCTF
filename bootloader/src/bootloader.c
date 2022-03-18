@@ -38,9 +38,6 @@ unsigned char ED_PUBLIC_KEY[32];
 // Helper to verify signatures
 #define signature_verify(signature, storage, size) ed25519_verify(signature, storage, size, ED_PUBLIC_KEY)
 
-// SHA512 from the ED25519 library
-#include "sha512.h"
-
 // Authentication uses SHA256
 #include "sha256.h"
 
@@ -385,23 +382,23 @@ extern uint32_t _ldata;
  * @brief Handle an integrity challenge of itself.
  */
 void handle_integrity_challenge(void) {
-    sha512_context hash;
+    SHA256_CTX hash;
     unsigned char challenge[12];
-    unsigned char out[64];
+    unsigned char out[AUTH_DIGEST_LEN];
 
     uart_writeb(HOST_UART, 'R');
     uart_read(HOST_UART, challenge, 12);
-    sha512_init(&hash); // If it fails at any step, final hash is bad so it's okay to not check the return
-    sha512_update(&hash, challenge, 12);
+    sha256_init(&hash); // If it fails at any step, final hash is bad so it's okay to not check the return
+    sha256_update(&hash, challenge, 12);
     // Flash
     uint8_t* start = (uint8_t*)0x5800;
     uint32_t size = 0x2B000 - 0x5800;
-    sha512_update(&hash, start, size);
+    sha256_update(&hash, start, size);
     // SRAM .data section
     start = (uint8_t*)&_data;
     size = (uint8_t*)&_edata - (uint8_t*)&_data;
-    sha512_update(&hash, start, size);
-    sha512_final(&hash, out);
+    sha256_update(&hash, start, size);
+    sha256_final(&hash, out);
     uart_write(HOST_UART, out, 64);
 }
 

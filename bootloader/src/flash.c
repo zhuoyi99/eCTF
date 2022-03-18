@@ -38,8 +38,8 @@ __attribute__((section(".data"))) int32_t flash_erase_page_unsafe(uint32_t addr)
     uint32_t base = addr & ~(FLASH_PAGE_SIZE - 1);
     return FlashErase(base);
     // Verify erased page is 0
-    for(uint32_t i = 0; i < FLASH_PAGE_SIZE; i += 4) {
-        if(*((uint32_t*)(base + i)) != 0) panic();
+    for(uint32_t i = 0; i < (FLASH_PAGE_SIZE / 4); i += 4) {
+        if(*((uint32_t*)base + i) != 0xffffffff) panic();
     }
 } 
 
@@ -197,7 +197,7 @@ __attribute__((section(".data"))) void load_data_unsafe(uint32_t interface, uint
         uart_read(HOST_UART, page_buffer, frame_size);
         // pad buffer if frame is smaller than the page
         for(i = frame_size; i < FLASH_PAGE_SIZE; i++) {
-            page_buffer[i] = 0xFF;
+            page_buffer[i] = 0xff;
         }
         // write flash page
         flash_write_unsafe((uint32_t *)page_buffer, dst, FLASH_PAGE_SIZE >> 2);
@@ -267,6 +267,11 @@ __attribute__((section(".data"))) void handle_update_write(uint8_t* rel_msg, uin
     // Retrieve firmware
     load_data_unsafe(HOST_UART, FIRMWARE_STORAGE_PTR, size, FIRMWARE_MAX_SIZE);
 
+    // Check remaining is zero'd still
+    for(uint32_t* i = (uint32_t*)FIRMWARE_STORAGE_PTR + (size / 4); i < ((uint32_t*)FIRMWARE_STORAGE_PTR + (FIRMWARE_MAX_SIZE / 4)); i++) {
+        if(*i !=  0xffffffff) panic();
+    }
+
     current_hash(hash2, (uint8_t*)FIRMWARE_BASE_PTR, padded_size);
     for(int i = 0; i < TC_SHA256_DIGEST_SIZE; i++) {
         if(hash[i] != hash2[i]) panic();
@@ -300,6 +305,11 @@ __attribute__((section(".data"))) void handle_configure_write(uint8_t* config_si
 
     // Retrieve configuration
     load_data_unsafe(HOST_UART, CONFIGURATION_STORAGE_PTR, size, CONFIGURATION_MAX_SIZE);
+
+    // Check remaining is zero'd still
+    for(uint32_t* i = (uint32_t*)CONFIGURATION_STORAGE_PTR + (size / 4); i < ((uint32_t*)CONFIGURATION_STORAGE_PTR + (CONFIGURATION_MAX_SIZE / 4)); i++) {
+        if(*i != 0xffffffff) panic();
+    }
 
     current_hash(hash2, (uint8_t*)CONFIGURATION_METADATA_PTR, padded_size);
     for(int i = 0; i < TC_SHA256_DIGEST_SIZE; i++) {

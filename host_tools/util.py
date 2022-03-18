@@ -82,7 +82,7 @@ def verify(msg: bytes, sig: bytes) -> bool:
     return True
 
 from secrets import token_bytes
-from hashlib import sha512
+from hashlib import sha256
 import struct
 import subprocess
 
@@ -129,13 +129,13 @@ def integrity_challenge(sock: socket.socket) -> None:
     start_time = time.time()
     sock.sendall(challenge)
 
-    computed_hash = sha512(challenge + fw_data).digest()
+    computed_hash = sha256(challenge + fw_data).digest()
     log.info(f"[INTEGRITY CHECK] Challenge: {challenge.hex()[:16]}...")
     log.info(f"[INTEGRITY CHECK] Computed:  {computed_hash.hex()[:16]}...")
 
     recv = b""
-    while len(recv) != 512//8:
-        recv_chunk = sock.recv(512//8 - len(recv))
+    while len(recv) != 256//8:
+        recv_chunk = sock.recv(256//8 - len(recv))
         if recv_chunk == b"": break # Forcefully in case of closed
         recv += recv_chunk
     log.info(f"[INTEGRITY CHECK] Recieved:  {recv.hex()[:16]}...")
