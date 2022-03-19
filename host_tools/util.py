@@ -68,11 +68,17 @@ def send_packets(sock: socket.socket, data: bytes):
 import ed25519
 
 def sign(msg: bytes) -> bytes:
+    """
+    Signs a message and returns a 64-byte signature. Requires access to secrets.
+    """
     with open("/secrets/ed_private_key.bin", "rb") as f:
         SIGNING_KEY = ed25519.SigningKey(f.read())
     return SIGNING_KEY.sign(msg)
 
 def verify(msg: bytes, sig: bytes) -> bool:
+    """
+    Verifies a message and returns a 64-byte signature. Requires access to secrets here.
+    """
     with open("/secrets/ed_public_key.bin", "rb") as f:
         VERIFYING_KEY = ed25519.VerifyingKey(f.read()[:32])
     try:
@@ -122,7 +128,7 @@ def integrity_challenge(sock: socket.socket) -> None:
             log.error("[INTEGRITY CHECK] Bootloader previously detected integrity violation!")
             exit(-1)
         log.error("[INTEGRITY CHECK] Failed to start integrity challenge")
-        exit(1)
+        exit(-1)
 
     challenge = token_bytes(12)
     import time

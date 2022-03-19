@@ -10,6 +10,9 @@
 #include "driverlib/rom_map.h"
 #include "driverlib/sysctl.h"
 
+/**
+ * @brief Convert JTAG pins to GPIO pins.
+ */
 void gpio_lock() {
     // This code is mostly taken from the examples:
     // https://github.com/yuvadm/tiva-c/blob/master/boards/dk-tm4c129x/gpio_jtag/gpio_jtag.c#L134

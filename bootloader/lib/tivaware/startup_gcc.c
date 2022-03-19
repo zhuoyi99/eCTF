@@ -74,14 +74,14 @@ extern int main(void);
 // for the "data" segment resides immediately following the "text" segment.
 //
 //*****************************************************************************
-// This does not work with the bootstrapper.
+// We are initializing the data section in main() instead
 /*
 extern uint32_t _ldata;
 extern uint32_t _data;
 extern uint32_t _edata;
+*/
 extern uint32_t _bss;
 extern uint32_t _ebss;
-*/
 
 //*****************************************************************************
 //
@@ -132,7 +132,7 @@ void Bootloader_Startup(void)
     main();
 }
 
-// Disalbe unused warning for these
+// Disable unused warning for these
 #pragma GCC diagnostic ignored "-Wunused-function"
 //*****************************************************************************
 //

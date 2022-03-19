@@ -3,6 +3,9 @@
 #include "flash_check.h"
 #include "rand.h"
 
+/**
+ * @brief Encrypts/decrypts the configuration in place. Assumes ctx has been initialized with key and IV.
+ */
 __attribute__((section(".data"), optimize("-Os"))) void cfg_crypt(uint8_t* configuration_storage, uint32_t size, struct AES_ctx* ctx, const _Bool encrypt) {
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];

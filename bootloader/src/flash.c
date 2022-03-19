@@ -126,6 +126,13 @@ __attribute__((section(".data"))) int32_t flash_write_unsafe(uint32_t *data, uin
 
 // Functions that are safe to use
 
+/**
+ * @brief Erases a block of flash.
+ * 
+ * @param addr is the starting address of the block of flash to erase.
+ * @return 0 on success, or -1 if an invalid block address was specified or the 
+ * block is write-protected.
+ */
 __attribute__((section(".data"))) int32_t flash_erase_page(uint32_t addr) {
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];
@@ -146,6 +153,16 @@ __attribute__((section(".data"))) int32_t flash_erase_page(uint32_t addr) {
     return status;
 }
 
+/**
+ * @brief Writes a word to flash.
+ * 
+ * This function writes a single word to flash memory. The flash address must
+ * be a multiple of 4.
+ * 
+ * @param data is the value to write.
+ * @param addr is the location to write to.
+ * @return 0 on success, or -1 if an error occurs.
+ */
 __attribute__((section(".data"))) int32_t flash_write_word(uint32_t data, uint32_t addr) {
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];
@@ -162,6 +179,16 @@ __attribute__((section(".data"))) int32_t flash_write_word(uint32_t data, uint32
     return status;
 }
 
+/**
+ * @brief Writes a word to flash.
+ * 
+ * This function writes a single word to flash memory. The flash address must
+ * be a multiple of 4.
+ * 
+ * @param data is the value to write.
+ * @param addr is the location to write to.
+ * @return 0 on success, or -1 if an error occurs.
+ */
 __attribute__((section(".data"))) int32_t flash_write(uint32_t *data, uint32_t addr, uint32_t count) {
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
     uint8_t hash2[TC_SHA256_DIGEST_SIZE];
@@ -178,6 +205,15 @@ __attribute__((section(".data"))) int32_t flash_write(uint32_t *data, uint32_t a
     return status;
 }
 
+/**
+ * @brief Read data from a UART interface and program to flash memory.
+ *
+ * Moved from bootloader.c, unsafe.
+ * 
+ * @param interface is the base address of the UART interface to read from.
+ * @param dst is the starting page address to store the data.
+ * @param size is the number of bytes to load.
+ */
 __attribute__((section(".data"))) void load_data_unsafe(uint32_t interface, uint32_t dst, uint32_t size, const uint32_t max_size)
 {
     int i;

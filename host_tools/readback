@@ -53,7 +53,7 @@ def readback(socket_number, region, num_bytes):
         # CHAP Authentication
         if not auth(sock):
             log.info('Authentication failed: readback terminated')
-            return
+            exit(-1)
 
         # Receive bootloader acknowledgement
         log.info("Waiting for bootloader to enter readback mode...")
@@ -126,11 +126,14 @@ def readback(socket_number, region, num_bytes):
 
         print(fw[:num_bytes].hex())
 
-# host side authentication - response to challenge
-#    key created from host_tools/generate_secrets and located in the /secrets folder
-# return whether auth succeeded (True) or not
-def auth (sock: socket.socket):
+def auth(sock: socket.socket) -> bool:
+    """
+    Host side authentication - response to challenge
+    The key is created from host_tools/generate_secrets and located in the /secrets folder
 
+    Returns whether auth succeeded (True) or not
+
+    """
     CH_LEN = 32 # challenge is a SHA256 digest, 32B 
     KEY_LEN = 32 # assume key length is 32 for now
 

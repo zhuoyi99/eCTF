@@ -17,12 +17,6 @@ while len(objects) > 0:
     objects.remove(o)
     out_objects.append(o)
 
-# Pre randomization positions:
-# 13570 main
-# sha256_transform 0
-# sha256_final 418
-
 argv[0] = "/usr/bin/arm-none-eabi-ld"
 argv = argv[:8] + out_objects + argv[8:]
-# print("New linker command is:", " ".join(argv))
 os.execve(argv[0], argv, os.environ)

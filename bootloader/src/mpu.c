@@ -5,6 +5,9 @@
 #include "inc/hw_types.h"
 #include "driverlib/mpu.h"
 
+/**
+ * @brief Set up memory protection if neccessary.
+ */
 void mpu_setup() {
     // Check we didn't already do this
     if((HWREG(NVIC_MPU_CTRL) & NVIC_MPU_CTRL_ENABLE) == 1) return;

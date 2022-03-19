@@ -14,7 +14,7 @@ CFLAGSgcc=-DTARGET_IS_TM4C123_RB1
 ROOT=.
 
 # Uncomment to enable debug symbols
-DEBUG=1
+# DEBUG=1
 
 # additional base directories
 TIVA_ROOT=${ROOT}/lib/tivaware
@@ -55,12 +55,6 @@ VPATH+=${CRYPTOPATH}
 # add crypto library to includes path
 IPATH+=${CRYPTOPATH}
 
-# add crypto object file to includes path
-# LDFLAGS+=${COMPILER}/aes.o
-
-# add compiler flag to enable example AES code 
-# CFLAGS+=-DEXAMPLE_AES
-
 # add rule to build crypto library
 ${COMPILER}/bootloader.axf: ${COMPILER}/aes.o
 # endif
@@ -73,20 +67,12 @@ IPATH+=${CRYPTPATH}
 ${COMPILER}/bootloader.axf: ${COMPILER}/add_scalar.o ${COMPILER}/fe.o ${COMPILER}/ge.o ${COMPILER}/key_exchange.o ${COMPILER}/keypair.o ${COMPILER}/sc.o ${COMPILER}/seed.o ${COMPILER}/sha512.o ${COMPILER}/sign.o ${COMPILER}/verify.o
 ################## end signature lib ###############
 
-################ start tinycrypt ###################
-# TCRYPTPATH=${ROOT}/lib/tinycrypt/lib
-# VPATH+=${TCRYPTPATH}/source
-# IPATH+=${TCRYPTPATH}/include
-# CFLAGS+=-DTINYPATH=${TCRYPTPATH}
-# ${COMPILER}/bootloader.axf: ${COMPILER}/aes_encrypt.o ${COMPILER}/aes_decrypt.o ${COMPILER}/cbc_mode.o ${COMPILER}/utils.o
-################## end tinycrypt ###################
-
-############### sha256 code
+################ start sha256 ######################
 SHAPATH=${ROOT}/lib/sha256
 VPATH+=${SHAPATH}
 IPATH+=${SHAPATH}
 ${COMPILER}/bootloader.axf: ${COMPILER}/sha256.o
-###########################
+################ end sha256 ########################
 
 # build libraries
 ${TIVA_ROOT}/driverlib/${COMPILER}/libdriver.a:

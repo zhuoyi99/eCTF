@@ -34,11 +34,6 @@ def load_configuration(socket_number: int, config_file: Path):
         config_iv = bytes.fromhex(data["iv"])
         configuration = bytes.fromhex(data["configuration"])
         size = len(configuration)
-    # configuration = config_file.read_bytes()
-    # # Signature is prepended
-    # signature = configuration[:64]
-    # configuration = configuration[64:]
-    # size = len(configuration)
 
     # Connect to the bootloader
     log.info("Connecting socket...")

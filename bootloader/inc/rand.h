@@ -8,7 +8,7 @@
 /**
  * @brief Increment a counter variable stored on EEPROM.
  */
-void inc_counter(uint8_t* counter);
+void inc_counter(uint32_t* counter);
 
 /**
  * @brief Fill a random buffer of size RAND_BUF_LEN
