@@ -93,7 +93,7 @@ extern uint32_t _ebss;
 // application.
 //
 //*****************************************************************************
-__attribute__ ((section(".bootloader_startup"), optimize("-fno-stack-check")))
+__attribute__ ((section(".bootloader_startup")))
 void Bootloader_Startup(void)
 {
     // Load initial stack pointer for setup purposes

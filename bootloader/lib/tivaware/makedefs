@@ -147,7 +147,7 @@ OBJCOPY=${PREFIX}-objcopy
 # variable is set.
 #
 ifdef DEBUG
-CFLAGS+=-g -D DEBUG -Og -fstack-check 
+CFLAGS+=-g -D DEBUG -Og 
 else
 CFLAGS+=-O3 -fno-tree-loop-distribute-patterns 
 endif
