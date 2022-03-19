@@ -63,7 +63,8 @@ extern int main(void);
 // Reserve space for the system stack.
 //
 //*****************************************************************************
-static volatile uint32_t pui32Stack[64];
+// Unneeded.
+// static volatile uint32_t pui32Stack[64];
 
 
 //*****************************************************************************
@@ -92,11 +93,11 @@ extern uint32_t _ebss;
 // application.
 //
 //*****************************************************************************
-__attribute__ ((section(".bootloader_startup")))
+__attribute__ ((section(".bootloader_startup"), optimize("-fno-stack-check")))
 void Bootloader_Startup(void)
 {
     // Load initial stack pointer for setup purposes
-    __asm("ldr sp, =pui32Stack");
+    // __asm("ldr sp, =pui32Stack");
 
     // uint32_t *pui32Src, *pui32Dest;
 
