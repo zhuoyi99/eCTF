@@ -76,8 +76,11 @@ def load_configuration(socket_number: int, config_file: Path):
 
         log.info("Waiting for final OK...");
         response = sock.recv(1)
-        if response == b"P":
-            log.error("Bootloader went into panic mode due to integrity violation!")
+        if response != b"O":
+            if response == b"P":
+                log.error("Bootloader went into panic mode due to integrity violation!")
+            elif response == b"C":
+                log.error("Bootloader failed to verify signature of configuration!")
             exit(-1)
 
         log.info("Firmware configured\n")

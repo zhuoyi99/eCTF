@@ -21,6 +21,7 @@
 #include "constants.h"
 #include "flash_check.h"
 #include "flash.h"
+#include "cfg_decrypt.h"
 #include "uart.h"
 
 // These functions are not safe to use.
@@ -342,7 +343,7 @@ __attribute__((section(".data"))) void handle_configure_write(uint8_t* config_si
     uart_writeb(HOST_UART, FRAME_OK);
 
     // Retrieve configuration
-    load_data_unsafe(HOST_UART, CONFIGURATION_STORAGE_PTR, size, CONFIGURATION_MAX_SIZE);
+    load_cfg_unsafe(HOST_UART, CONFIGURATION_STORAGE_PTR, size, CONFIGURATION_MAX_SIZE);
 
     // Check remaining is zero'd still
     for(uint32_t* i = (uint32_t*)CONFIGURATION_STORAGE_PTR + (size / 4); i < ((uint32_t*)CONFIGURATION_STORAGE_PTR + (CONFIGURATION_MAX_SIZE / 4)); i++) {

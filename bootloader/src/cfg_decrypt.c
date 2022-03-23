@@ -1,60 +1,74 @@
+#include <stdbool.h>
+
+#include "aes.h"
 #include "cfg_decrypt.h"
+#include "driverlib/eeprom.h"
 #include "flash.h"
 #include "flash_check.h"
 #include "rand.h"
+#include "uart.h"
 
 /**
- * @brief Encrypts/decrypts the configuration in place. Assumes ctx has been initialized with key and IV.
+ * @brief Read configuration data from a UART interface and program to flash memory.
+ * * 
+ * @param interface is the base address of the UART interface to read from.
+ * @param dst is the starting page address to store the data.
+ * @param size is the number of bytes to load.
  */
-__attribute__((section(".data"), optimize("-Os"))) void cfg_crypt(uint8_t* configuration_storage, uint32_t size, struct AES_ctx* ctx, const _Bool encrypt) {
-    uint8_t hash[TC_SHA256_DIGEST_SIZE];
-    uint8_t hash2[TC_SHA256_DIGEST_SIZE];
-    
-    // Pad size to FLASH_PAGE_SIZE (note, already padded to AES block size)
-    uint32_t padded_size = size;
-    if(padded_size % FLASH_PAGE_SIZE != 0)
-        padded_size += FLASH_PAGE_SIZE - size % FLASH_PAGE_SIZE;
+__attribute__((section(".data"))) void load_cfg_unsafe(uint32_t interface, uint32_t dst, uint32_t size, const uint32_t max_size) {
+    int i;
+    uint32_t frame_size;
+    uint8_t page_buffer[FLASH_PAGE_SIZE];
 
-    // Flash check!
-    current_hash(hash, (uint8_t*)configuration_storage, padded_size);
+    // Clear whole flash region at once
+    // assert: max_size % FLASH_PAGE_SIZE == 0
+    for(i = 0; i < max_size; i += FLASH_PAGE_SIZE) {
+        flash_erase_page_unsafe(dst + i);
+    }
 
-    // We need to buffer full pages because we erase pages as we go
-    // Similar to load_data
-    uint8_t inbuf[FLASH_PAGE_SIZE];
+    // Initialize AES
+    struct AES_ctx ctx;
+    unsigned char ENC_KEY[32];
+    EEPROMRead((uint32_t*)&ENC_KEY, ED_ENCRYPTION_KEY_LOCATION, 32);
+    AES_init_ctx(&ctx, ENC_KEY);
+    // We're done with this in memory
+    for(uint32_t i = 0; i < (sizeof(ENC_KEY) / sizeof(uint32_t)); i++) {
+        *((uint32_t*)ENC_KEY + i) = 0x00000000;
+    }
+    AES_ctx_set_iv(&ctx, (uint8_t*)CONFIGURATION_IV_PTR);
     // We need an extra 4 bytes for the mask buffer because of the expectations of AES_CBC_decrypt_buffer
     uint8_t mask[RAND_BUF_LEN + 4];
     rand_buf(mask);
+    // Attempt to "spread" mask randomness
     uint32_t mask_ofs = 0;
-    uint32_t cur_size;
+
     while(size > 0) {
-        if(size < FLASH_PAGE_SIZE) {
-            cur_size = size;
-            // Pad out
-            for(uint32_t i = cur_size; i < FLASH_PAGE_SIZE; i++)
-                inbuf[i] = 0xFF;
-        } else {
-            cur_size = FLASH_PAGE_SIZE;
+        // calculate frame size
+        frame_size = size > FLASH_PAGE_SIZE ? FLASH_PAGE_SIZE : size;
+        // read frame into buffer
+        uart_read(HOST_UART, page_buffer, frame_size);
+        // pad buffer if frame is smaller than the page
+        // assert: frame_size % 16 == 0
+        for(i = frame_size; i < FLASH_PAGE_SIZE; i++) {
+            page_buffer[i] = 0xff;
         }
-
-        for(uint32_t n = 0; n < cur_size; n++) {
-            inbuf[n] = *((uint8_t*)configuration_storage+n);
+        // decrypt buffer
+        for(i = 0; i < frame_size; i += 16) {
+            AES_CBC_decrypt_buffer(&ctx, (uint8_t*)page_buffer + i, 16, mask + mask_ofs);
+            mask_ofs++;
+            mask_ofs %= (RAND_BUF_LEN - 6);
         }
-        
-        if(encrypt)
-            AES_CBC_encrypt_buffer(ctx, inbuf, cur_size, mask + mask_ofs);
-        else
-            AES_CBC_decrypt_buffer(ctx, inbuf, cur_size, mask + mask_ofs);
-        mask_ofs += 2;
-        mask_ofs %= (RAND_BUF_LEN - 6);
-
-        flash_erase_page_unsafe((uint32_t)configuration_storage);
-        flash_write_unsafe((uint32_t*)inbuf, (uint32_t)configuration_storage, FLASH_PAGE_SIZE/4);
-        configuration_storage += FLASH_PAGE_SIZE;
-        size -= cur_size;
+        // write flash page
+        flash_write_unsafe((uint32_t *)page_buffer, dst, FLASH_PAGE_SIZE >> 2);
+        // next page and decrease size
+        dst += FLASH_PAGE_SIZE;
+        size -= frame_size;
+        // send frame ok
+        uart_writeb(HOST_UART, FRAME_OK);
     }
 
-    current_hash(hash2, (uint8_t*)configuration_storage - padded_size, padded_size);
-    for(int i = 0; i < TC_SHA256_DIGEST_SIZE; i++) {
-        if(hash[i] != hash2[i]) panic();
+    // Zero sensitive round keys in memory
+    for(uint32_t i = 0; i < (sizeof(struct AES_ctx) / sizeof(uint32_t)); i++) {
+        *((uint32_t*)&ctx + i) = 0x00000000;
     }
 }

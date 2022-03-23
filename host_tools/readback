@@ -112,11 +112,12 @@ def readback(socket_number, region, num_bytes):
             fw += data
             bytes_remaining -= num_received
 
-        key_file = Path("/secrets/encryption_key.bin")
-        key = key_file.read_bytes()[:32]
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), default_backend())
-        decryptor = cipher.decryptor()
-        fw = decryptor.update(fw) + decryptor.finalize()
+        if region == "firmware":
+            key_file = Path("/secrets/encryption_key.bin")
+            key = key_file.read_bytes()[:32]
+            cipher = Cipher(algorithms.AES(key), modes.CBC(iv), default_backend())
+            decryptor = cipher.decryptor()
+            fw = decryptor.update(fw) + decryptor.finalize()
 
         if not verify(fw, signature):
             log.error("Failed to verify signature of readback data!");
