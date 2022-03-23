@@ -7,7 +7,7 @@
  * @brief Increment a counter variable stored on EEPROM.
  */
 __attribute__((section(".data"))) void inc_counter (uint32_t *counter) {
-    uint32_t *loc = counter + RAND_CTR_LEN - 1;
+    uint32_t *loc = counter + (RAND_CTR_LEN/4) - 1;
     while (loc >= counter) {
         (*loc)++;
         if (*loc != 0x0) {
