@@ -99,13 +99,13 @@ def readback(socket_number, region, num_bytes):
         num_bytes_read = int.from_bytes(num_bytes_and_sig_and_iv[:4], byteorder="little")
         signature = num_bytes_and_sig_and_iv[4:68]
         iv = num_bytes_and_sig_and_iv[68:]
-        # Notify ready for response data
-        sock.send(b"R")
         # Receive response data
         log.info("Receiving data...")
         bytes_remaining = num_bytes_read
         fw = b""
         while bytes_remaining > 0:
+            if len(fw) % 4096 == 0:
+                sock.send(b"R")
             num_bytes_read = 4096 if bytes_remaining > 4096 else bytes_remaining
             data = sock.recv(num_bytes_read)
             num_received = len(data)

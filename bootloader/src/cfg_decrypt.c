@@ -4,13 +4,13 @@
 #include "cfg_decrypt.h"
 #include "driverlib/eeprom.h"
 #include "flash.h"
-#include "flash_check.h"
 #include "rand.h"
 #include "uart.h"
 
 /**
  * @brief Read configuration data from a UART interface and program to flash memory.
- * * 
+ * This function is unsafe to call directly.
+ * 
  * @param interface is the base address of the UART interface to read from.
  * @param dst is the starting page address to store the data.
  * @param size is the number of bytes to load.

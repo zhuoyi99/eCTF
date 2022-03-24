@@ -471,7 +471,7 @@ __attribute__((section(".data"), optimize("-Os"))) static void KeyExpansion(uint
   }
 }
 
-__attribute__((section(".data"))) void AES_init_ctx(struct AES_ctx *ctx, const uint8_t *key)
+__attribute__((section(".data"), optimize("-Os"))) void AES_init_ctx(struct AES_ctx *ctx, const uint8_t *key)
 {
   KeyExpansion(ctx->RoundKey, key);
 }
@@ -484,7 +484,7 @@ __attribute__((section(".data"))) void AES_init_ctx_iv(struct AES_ctx *ctx, cons
   my_memcpy(ctx->Iv, iv, AES_BLOCKLEN);
 }
 */
-__attribute__((section(".data"))) void AES_ctx_set_iv(struct AES_ctx *ctx, const uint8_t *iv)
+__attribute__((section(".data"), optimize("-Os"))) void AES_ctx_set_iv(struct AES_ctx *ctx, const uint8_t *iv)
 {
   my_memcpy(ctx->Iv, iv, AES_BLOCKLEN);
 }

@@ -246,15 +246,12 @@ void handle_readback(void)
     // Read out signed ver, IV
     uart_write(HOST_UART, iv, 16);
     
-    // Wait for host to be ready
-    uart_readb(HOST_UART);
-
-    // Read out the memory (in chunks to prevent buffering problems when really large)
-    uint32_t wsize;
+    // Write out data in chunks
     for(uint32_t i = 0; i < size; i += 4096) {
-        wsize = (size - i) < 4096 ? (size - i) : 4096;
-        uart_write(HOST_UART, address+i, wsize);
-    }
+        uint32_t rem = (size - i) < 4096 ? (size - i) : 4096;
+        uart_readb(HOST_UART);
+        uart_write(HOST_UART, address + i, rem);
+    }   
 }
 
 // load_data was moved to flash.c since it sits in SRAM now
