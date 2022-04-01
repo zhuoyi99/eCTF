@@ -434,14 +434,13 @@ int main(void) {
     for(uint32_t* start = &_data; start < &_edata;)
         *start++ = *source++;
 
-    // Enable MPU
-    mpu_setup();
-
     // If we need to set up permissions, do so.
     uint32_t control_reg;
     // This inline assembly just loads the CONTROL register into a variable.
     __asm ("mrs %[result], CONTROL" : [result] "=r" (control_reg));
     if((control_reg & 1) == 0) {
+        // Enable MPU
+        mpu_setup();
         // Enter unpriviledged mode
         __asm volatile ("mov r0, #1\nmsr CONTROL, r0" : : : "r0");
     }
