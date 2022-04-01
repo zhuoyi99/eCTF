@@ -14,7 +14,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "driverlib/interrupt.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/eeprom.h"
 #include "inc/hw_eeprom.h"
@@ -443,8 +442,6 @@ int main(void) {
     // This inline assembly just loads the CONTROL register into a variable.
     __asm ("mrs %[result], CONTROL" : [result] "=r" (control_reg));
     if((control_reg & 1) == 0) {
-        // No need for interrupts for us
-        IntMasterDisable();
         // Enter unpriviledged mode
         __asm volatile ("mov r0, #1\nmsr CONTROL, r0" : : : "r0");
     }
