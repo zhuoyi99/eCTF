@@ -16,7 +16,7 @@ import logging
 from pathlib import Path
 import socket
 
-from util import print_banner, RELEASE_MESSAGES_ROOT, LOG_FORMAT, integrity_challenge
+from util import print_banner, RELEASE_MESSAGES_ROOT, LOG_FORMAT
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(Path(__file__).name)
@@ -28,8 +28,6 @@ def boot(socket_number: int, release_message_file: Path):
     # Connect to the bootloader
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect(("saffire-net", socket_number))
-
-        integrity_challenge(sock)
 
         # Send boot command
         log.info("Sending boot command...")

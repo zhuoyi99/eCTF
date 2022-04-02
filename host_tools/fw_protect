@@ -20,7 +20,7 @@ from cryptography.hazmat.backends import default_backend
 from pathlib import Path
 import os
 
-from util import print_banner, FIRMWARE_ROOT, LOG_FORMAT, sign
+from util import print_banner, FIRMWARE_ROOT, LOG_FORMAT, sign, generate_integrity_challenge
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(Path(__file__).name)
@@ -72,6 +72,7 @@ def protect_firmware(
         "firmware": enc_fw.hex(), # encrypted firmware
         "iv": iv.hex(),
         "signature": signature.hex(),
+        "challenge": generate_integrity_challenge()
     }
 
     # Write to the output file

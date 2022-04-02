@@ -37,13 +37,14 @@ def update_firmware(socket_number: int, firmware_file: Path):
         iv = bytes.fromhex(data["iv"])
         signature = bytes.fromhex(data["signature"])
         firmware_size = len(firmware)
+        challenge = data["challenge"]
 
     # Connect to the bootloader
     log.info("Connecting socket...")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect(("saffire-net", socket_number))
 
-        integrity_challenge(sock)
+        integrity_challenge(sock, data["challenge"])
 
         # Send update command
         log.info("Sending update command...")

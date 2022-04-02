@@ -18,7 +18,7 @@ import os
 from pathlib import Path
 from cryptography.hazmat.primitives.ciphers import algorithms, modes, Cipher
 from cryptography.hazmat.backends import default_backend
-from util import print_banner, CONFIGURATION_ROOT, LOG_FORMAT, sign
+from util import print_banner, CONFIGURATION_ROOT, LOG_FORMAT, sign, generate_integrity_challenge
 
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 log = logging.getLogger(Path(__file__).name)
@@ -56,7 +56,8 @@ def protect_configuration(raw_cfg: Path, protected_cfg: Path):
     data = {
         "signature": signature.hex(),
         "iv": iv.hex(),
-        "configuration": enc_cfg.hex()
+        "configuration": enc_cfg.hex(),
+        "challenge": generate_integrity_challenge()
     }
 
     # Write to the output file

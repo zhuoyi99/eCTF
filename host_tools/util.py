@@ -92,11 +92,7 @@ from hashlib import sha256
 import struct
 import subprocess
 
-def integrity_challenge(sock: socket.socket) -> None:
-    """
-    Checks the integrity of the bootloader and exits on failure.
-    """
-
+def generate_integrity_challenge() -> list:
     with open("/bootloader/bootloader.bin", "rb") as f:
         fw_data = f.read()
     start = 0x5800
@@ -121,6 +117,16 @@ def integrity_challenge(sock: socket.socket) -> None:
     end = start + (edata - data)
     fw_data += fw_data[start:end]
 
+    challenge = token_bytes(12)
+    computed_hash = sha256(challenge + fw_data).digest()
+    return (challenge.hex(), computed_hash.hex())
+
+
+def integrity_challenge(sock: socket.socket, challenge: list) -> None:
+    """
+    Checks the integrity of the bootloader and exits on failure.
+    """
+
     sock.sendall(b"I");
     recv = sock.recv(1)
     if recv != b"R":
@@ -130,14 +136,12 @@ def integrity_challenge(sock: socket.socket) -> None:
         log.error("[INTEGRITY CHECK] Failed to start integrity challenge")
         exit(-1)
 
-    challenge = token_bytes(12)
     import time
     start_time = time.time()
-    sock.sendall(challenge)
+    sock.sendall(bytes.fromhex(challenge[0]))
 
-    computed_hash = sha256(challenge + fw_data).digest()
-    log.info(f"[INTEGRITY CHECK] Challenge: {challenge.hex()[:16]}...")
-    log.info(f"[INTEGRITY CHECK] Computed:  {computed_hash.hex()[:16]}...")
+    log.info(f"[INTEGRITY CHECK] Challenge: {challenge[0][:16]}...")
+    log.info(f"[INTEGRITY CHECK] Computed:  {challenge[1][:16]}...")
 
     recv = b""
     while len(recv) != 256//8:
@@ -147,7 +151,7 @@ def integrity_challenge(sock: socket.socket) -> None:
     log.info(f"[INTEGRITY CHECK] Recieved:  {recv.hex()[:16]}...")
     log.info(f"[INTEGRITY CHECK] Time: {time.time() - start_time} sec")
 
-    if recv != computed_hash:
+    if recv.hex() != challenge[1]:
         log.error("Could not verify integrity of bootloader!")
         exit(-1)
 

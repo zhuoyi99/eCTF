@@ -34,13 +34,14 @@ def load_configuration(socket_number: int, config_file: Path):
         config_iv = bytes.fromhex(data["iv"])
         configuration = bytes.fromhex(data["configuration"])
         size = len(configuration)
+        challenge = data["challenge"]
 
     # Connect to the bootloader
     log.info("Connecting socket...")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect(("saffire-net", socket_number))
 
-        integrity_challenge(sock)
+        integrity_challenge(sock, data["challenge"])
 
         # Send configure command
         log.info("Sending configure command...")
